@@ -57,9 +57,33 @@ public partial class MainWindow : Window
             timer.Start();
         }
     }
+    private void Mp3Grid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (Mp3Grid.SelectedItem == null)
+            return;
+
+        var selected = Mp3Grid.SelectedItem;
+
+        var pathProperty = selected.GetType().GetProperty("AbsolutePath");
+
+        if (pathProperty == null)
+            return;
+
+        string path = pathProperty.GetValue(selected)?.ToString();
+
+        var service = new MetadataService();
+        var meta = service.Extract(path);
+
+        TitleText.Text = meta.Title;
+        AlbumText.Text = meta.Album;
+        ArtistText.Text = meta.Artist;
+        GenreText.Text = meta.Genre;
+        YearText.Text = meta.Year.ToString();
+        DurationText.Text = meta.Duration.ToString() + " sec";
+    }
 
     private void ScanFolder(
-        object sender,
+        object? sender,
         EventArgs e)
     {
         ScanNow();
@@ -81,5 +105,20 @@ public partial class MainWindow : Window
 
         Mp3Grid.ItemsSource =
             files;
+
+        var service =
+            new MetadataService();
+
+        foreach (var x in files)
+        {
+            var meta =
+            service.Extract(
+            x.AbsolutePath
+            );
+
+            Console.WriteLine(
+            meta.Title
+            );
+        }
     }
 }

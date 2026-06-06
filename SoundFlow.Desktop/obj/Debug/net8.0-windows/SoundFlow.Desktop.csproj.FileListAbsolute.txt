@@ -3,6 +3,11 @@ D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\SoundFlow.Des
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\SoundFlow.Desktop.runtimeconfig.json
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\SoundFlow.Desktop.dll
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\SoundFlow.Desktop.pdb
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\RabbitMQ.Client.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\System.IO.Pipelines.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\System.Threading.RateLimiting.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\TagLibSharp.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\SoundFlow.Desktop.csproj.AssemblyReference.cache
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\MainWindow.baml
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\MainWindow.g.cs
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\App.g.cs
@@ -13,6 +18,7 @@ D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\SoundFlow.Des
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\SoundFlow.Desktop.AssemblyInfo.cs
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\SoundFlow.Desktop.csproj.CoreCompileInputs.cache
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\SoundFlow.Desktop.sourcelink.json
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\SoundFlo.946E1045.Up2Date
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\SoundFlow.Desktop.dll
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\refint\SoundFlow.Desktop.dll
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\SoundFlow.Desktop.pdb

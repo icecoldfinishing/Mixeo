@@ -1,8 +1,13 @@
 {
   "version": 2,
-  "dgSpecHash": "KJq+Ku9LzRs=",
+  "dgSpecHash": "uHyQeoCGFig=",
   "success": true,
   "projectFilePath": "D:\\L3\\GProjet\\SoundFlow\\SoundFlow.Desktop\\SoundFlow.Desktop.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\Rohy\\.nuget\\packages\\rabbitmq.client\\7.2.1\\rabbitmq.client.7.2.1.nupkg.sha512",
+    "C:\\Users\\Rohy\\.nuget\\packages\\system.io.pipelines\\8.0.0\\system.io.pipelines.8.0.0.nupkg.sha512",
+    "C:\\Users\\Rohy\\.nuget\\packages\\system.threading.ratelimiting\\8.0.0\\system.threading.ratelimiting.8.0.0.nupkg.sha512",
+    "C:\\Users\\Rohy\\.nuget\\packages\\taglibsharp\\2.3.0\\taglibsharp.2.3.0.nupkg.sha512"
+  ],
   "logs": []
 }
