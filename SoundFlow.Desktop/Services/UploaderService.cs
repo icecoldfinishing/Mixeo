@@ -1,99 +1,75 @@
-using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
-using System.Text;
+using System;
+using System.IO;
+using System.Net.Http;
 using System.Text.Json;
+using System.Threading.Tasks;
 using SoundFlow.Desktop.Models;
 
 namespace SoundFlow.Desktop.Services;
 
 public class UploaderService
 {
-    private readonly HttpClient _http = new();
+    private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromMinutes(5) };
+    private const string ApiUrl = "http://localhost:5021/api/mp3/upload"; // Verify your API port if different
 
-    public void Start()
+    public async Task<bool> UploadAndCleanupAsync(Mp3Metadata metadata)
     {
-        var factory = new ConnectionFactory()
+        LoggingService.Log("Uploader", $"Starting upload for {metadata.Title} (Path: {metadata.Path})");
+
+        if (!File.Exists(metadata.Path))
         {
-            HostName = "localhost"
-        };
-
-        var connection = factory.CreateConnection();
-        var channel = connection.CreateModel();
-
-        channel.QueueDeclare(
-            queue: "mp3.metadata",
-            durable: false,
-            exclusive: false,
-            autoDelete: false
-        );
-
-        var consumer = new EventingBasicConsumer(channel);
-
-        consumer.Received += async (sender, e) =>
-        {
-            var json = Encoding.UTF8.GetString(e.Body.ToArray());
-
-            var meta = JsonSerializer.Deserialize<Mp3Metadata>(json);
-
-            if (meta == null)
-                return;
-
-            Console.WriteLine($"[UPLOAD] {meta.Title}");
-
-            bool ok = await UploadToApi(meta);
-
-            if (ok)
-            {
-                try
-                {
-                    File.Delete(meta.Path);
-                    Console.WriteLine($"[DELETE] {meta.Path}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[ERROR DELETE] {ex.Message}");
-                }
-            }
-        };
-
-        channel.BasicConsume(
-            queue: "mp3.metadata",
-            autoAck: true,
-            consumer: consumer
-        );
-    }
-
-    private async Task<bool> UploadToApi(Mp3Metadata meta)
-    {
-        var content = new MultipartFormDataContent();
-
-        content.Add(new StringContent(meta.Title ?? ""), "title");
-        content.Add(new StringContent(meta.Album ?? ""), "album");
-        content.Add(new StringContent(meta.Artist ?? ""), "artist");
-        content.Add(new StringContent(meta.Genre ?? ""), "genre");
-        content.Add(new StringContent(meta.Year.ToString()), "year");
-
-        if (!File.Exists(meta.Path))
-        {
-            Console.WriteLine("[ERROR] file not found");
+            LoggingService.Log("Uploader", $"File does not exist: {metadata.Path}");
             return false;
         }
 
-        var bytes = await File.ReadAllBytesAsync(meta.Path);
+        try
+        {
+            using var content = new MultipartFormDataContent();
 
-        content.Add(
-            new ByteArrayContent(bytes),
-            "file",
-            Path.GetFileName(meta.Path)
-        );
+            // Read file stream
+            var fileStream = new FileStream(metadata.Path, FileMode.Open, FileAccess.Read);
+            var fileContent = new StreamContent(fileStream);
+            content.Add(fileContent, "file", Path.GetFileName(metadata.Path));
 
-        var response = await _http.PostAsync(
-            "http://localhost:5000/api/mp3/upload",
-            content
-        );
+            // Metadata fields
+            content.Add(new StringContent(metadata.Title), "title");
+            content.Add(new StringContent(metadata.Artist), "artist");
+            content.Add(new StringContent(metadata.Album), "album");
+            content.Add(new StringContent(metadata.Genre), "genre");
+            content.Add(new StringContent(metadata.Year.ToString()), "year");
+            content.Add(new StringContent(metadata.Duration.ToString()), "duration");
 
-        Console.WriteLine($"[API] Status: {response.StatusCode}");
+            var response = await HttpClient.PostAsync(ApiUrl, content);
 
-        return response.IsSuccessStatusCode;
+            // Clean up the file stream so we can delete the file afterwards if upload is successful
+            fileStream.Dispose();
+
+            if (response.IsSuccessStatusCode)
+            {
+                LoggingService.Log("Uploader", $"Upload successful for {metadata.Title}. Deleting local file.");
+                try
+                {
+                    File.Delete(metadata.Path);
+                    LoggingService.Log("Uploader", $"Local file deleted successfully: {metadata.Path}");
+                    return true;
+                }
+                catch (Exception deleteEx)
+                {
+                    LoggingService.Log("Uploader", $"Failed to delete local file {metadata.Path}: {deleteEx.Message}");
+                    return false;
+                }
+            }
+            else
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                LoggingService.Log("Uploader", $"Upload failed with status code {response.StatusCode}: {errorMsg}");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            LoggingService.Log("Uploader", $"Error during upload/cleanup: {ex.Message}");
+            return false;
+        }
     }
 }

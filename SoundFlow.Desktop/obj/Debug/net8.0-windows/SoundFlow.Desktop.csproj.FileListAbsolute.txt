@@ -24,3 +24,17 @@ D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\refint\SoundF
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\SoundFlow.Desktop.pdb
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\SoundFlow.Desktop.genruntimeconfig.cache
 D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\obj\Debug\net8.0-windows\ref\SoundFlow.Desktop.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.Configuration.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.Configuration.Abstractions.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.Configuration.Binder.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.DependencyInjection.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.Diagnostics.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.Diagnostics.Abstractions.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.Http.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.Logging.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.Logging.Abstractions.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.Options.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.Options.ConfigurationExtensions.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\Microsoft.Extensions.Primitives.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Desktop\bin\Debug\net8.0-windows\System.Diagnostics.DiagnosticSource.dll
