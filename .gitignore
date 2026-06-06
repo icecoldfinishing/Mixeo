@@ -15,3 +15,7 @@ coverage/
 *.iml
 *.sublime-project
 *.sublime-workspace
+SoundFlow.Api/bin/
+SoundFlow.Api/obj/
+SoundFlow.Desktop/bin/
+SoundFlow.Desktop/obj/
