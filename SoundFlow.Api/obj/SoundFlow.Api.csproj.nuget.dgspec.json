@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\L3\\GProjet\\SoundFlow\\SoundFlow.Desktop\\SoundFlow.Desktop.csproj": {}
+    "D:\\L3\\GProjet\\SoundFlow\\SoundFlow.Api\\SoundFlow.Api.csproj": {}
   },
   "projects": {
-    "D:\\L3\\GProjet\\SoundFlow\\SoundFlow.Desktop\\SoundFlow.Desktop.csproj": {
+    "D:\\L3\\GProjet\\SoundFlow\\SoundFlow.Api\\SoundFlow.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\L3\\GProjet\\SoundFlow\\SoundFlow.Desktop\\SoundFlow.Desktop.csproj",
-        "projectName": "SoundFlow.Desktop",
-        "projectPath": "D:\\L3\\GProjet\\SoundFlow\\SoundFlow.Desktop\\SoundFlow.Desktop.csproj",
+        "projectUniqueName": "D:\\L3\\GProjet\\SoundFlow\\SoundFlow.Api\\SoundFlow.Api.csproj",
+        "projectName": "SoundFlow.Api",
+        "projectPath": "D:\\L3\\GProjet\\SoundFlow\\SoundFlow.Api\\SoundFlow.Api.csproj",
         "packagesPath": "C:\\Users\\Rohy\\.nuget\\packages\\",
-        "outputPath": "D:\\L3\\GProjet\\SoundFlow\\SoundFlow.Desktop\\obj\\",
+        "outputPath": "D:\\L3\\GProjet\\SoundFlow\\SoundFlow.Api\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -22,7 +22,7 @@
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
-          "net8.0-windows"
+          "net9.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
@@ -30,8 +30,8 @@
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net8.0-windows7.0": {
-            "targetAlias": "net8.0-windows",
+          "net9.0": {
+            "targetAlias": "net9.0",
             "projectReferences": {}
           }
         },
@@ -48,20 +48,28 @@
         "SdkAnalysisLevel": "9.0.200"
       },
       "frameworks": {
-        "net8.0-windows7.0": {
-          "targetAlias": "net8.0-windows",
+        "net9.0": {
+          "targetAlias": "net9.0",
           "dependencies": {
-            "Microsoft.Extensions.Http": {
+            "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
-              "version": "[10.0.8, )"
+              "version": "[9.0.16, )"
             },
-            "RabbitMQ.Client": {
+            "Microsoft.EntityFrameworkCore": {
               "target": "Package",
-              "version": "[7.2.1, )"
+              "version": "[9.0.16, )"
             },
-            "TagLibSharp": {
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
-              "version": "[2.3.0, )"
+              "version": "[9.0.1, )"
+            },
+            "Swashbuckle.AspNetCore": {
+              "target": "Package",
+              "version": "[6.5.0, )"
+            },
+            "System.Text.Json": {
+              "target": "Package",
+              "version": "[7.0.2, )"
             }
           },
           "imports": [
@@ -76,11 +84,11 @@
           "assetTargetFallback": true,
           "warn": true,
           "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
-            },
-            "Microsoft.WindowsDesktop.App.WPF": {
-              "privateAssets": "none"
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.201/PortableRuntimeIdentifierGraph.json"
