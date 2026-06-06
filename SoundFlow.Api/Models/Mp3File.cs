@@ -23,10 +23,10 @@ public class Mp3File
     public string? Genre { get; set; }
 
     [Column("year")]
-    public int Year { get; set; }
+    public int? Year { get; set; }
 
     [Column("duration")]
-    public int Duration { get; set; }
+    public int? Duration { get; set; }
 
     [Column("file_path")]
     public string? FilePath { get; set; }

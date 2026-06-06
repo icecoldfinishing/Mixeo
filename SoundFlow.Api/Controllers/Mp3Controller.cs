@@ -17,24 +17,26 @@ public class Mp3Controller : ControllerBase
 
     [HttpPost("upload")]
     public async Task<IActionResult> Upload(
-        [FromForm] string title,
+        [FromForm] string? title,
         [FromForm] string? artist,
         [FromForm] string? album,
         [FromForm] string? genre,
         [FromForm] int? year,
         [FromForm] int? duration)
     {
-        Console.WriteLine($"[API] Metadata received: Title={title}, Year={year}, Duration={duration}");
+        Console.WriteLine($"[API] Metadata received: Title={title}");
 
         var mp3 = new Mp3File
         {
-            Title = title,
-            Artist = artist,
-            Album = album,
-            Genre = genre,
-            // Si l'entier reçu est nul, on applique une valeur par défaut pour éviter de faire planter la BD
-            Year = year ?? 2026, 
-            Duration = duration ?? 0,
+            Title = title,       // Requis
+            Artist = artist,     // Sera stocké NULL en BD si absent
+            Album = album,       // Sera stocké NULL en BD si absent
+            Genre = genre,       // Sera stocké NULL en BD si absent
+            
+            // Pour les types numériques en BD, l'entier doit accepter le NULL dans le modèle Mp3File.
+            Year = year ?? 0,          // Si tu veux stocker 0 ou une valeur par défaut
+            Duration = duration ?? 0,  // Si tu veux stocker 0 ou une valeur par défaut
+            
             FilePath = $"temp_path_{Guid.NewGuid()}.mp3",
             CreatedAt = DateTime.UtcNow
         };
@@ -45,7 +47,11 @@ public class Mp3Controller : ControllerBase
         return Ok(new
         {
             success = true,
+            id = mp3.Id,
             title = mp3.Title,
+            artist = mp3.Artist,
+            album = mp3.Album,
+            genre = mp3.Genre,
             year = mp3.Year,
             duration = mp3.Duration
         });
