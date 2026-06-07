@@ -17,43 +17,44 @@ public class Mp3Controller : ControllerBase
 
     [HttpPost("upload")]
     public async Task<IActionResult> Upload(
-        [FromForm] string? title,
-        [FromForm] string? artist,
-        [FromForm] string? album,
-        [FromForm] string? genre,
-        [FromForm] int? year,
-        [FromForm] int? duration)
+    [FromForm] string? title,
+    [FromForm] string? artist,
+    [FromForm] string? album,
+    [FromForm] string? genre,
+    [FromForm] int? year,
+    [FromForm] int? duration,
+    [FromForm] IFormFile file)
     {
-        Console.WriteLine($"[API] Metadata received: Title={title}");
+        Console.WriteLine($"[API] Received: {title}");
+
+        string filePath = "";
+
+        if (file != null && file.Length > 0)
+        {
+            var folder = Path.Combine("Uploads", "mp3");
+            Directory.CreateDirectory(folder);
+
+            filePath = Path.Combine(folder, file.FileName);
+
+            using var stream = new FileStream(filePath, FileMode.Create);
+            await file.CopyToAsync(stream);
+        }
 
         var mp3 = new Mp3File
         {
-            Title = title,       // Requis
-            Artist = artist,     // Sera stocké NULL en BD si absent
-            Album = album,       // Sera stocké NULL en BD si absent
-            Genre = genre,       // Sera stocké NULL en BD si absent
-            
-            // Pour les types numériques en BD, l'entier doit accepter le NULL dans le modèle Mp3File.
-            Year = year ?? 0,          // Si tu veux stocker 0 ou une valeur par défaut
-            Duration = duration ?? 0,  // Si tu veux stocker 0 ou une valeur par défaut
-            
-            FilePath = $"temp_path_{Guid.NewGuid()}.mp3",
+            Title = title,
+            Artist = artist,
+            Album = album,
+            Genre = genre,
+            Year = year ?? 0,
+            Duration = duration ?? 0,
+            FilePath = filePath,
             CreatedAt = DateTime.UtcNow
         };
 
         _db.Mp3Files.Add(mp3);
-        await _db.SaveChangesAsync(); 
+        await _db.SaveChangesAsync();
 
-        return Ok(new
-        {
-            success = true,
-            id = mp3.Id,
-            title = mp3.Title,
-            artist = mp3.Artist,
-            album = mp3.Album,
-            genre = mp3.Genre,
-            year = mp3.Year,
-            duration = mp3.Duration
-        });
+        return Ok(mp3);
     }
 }
