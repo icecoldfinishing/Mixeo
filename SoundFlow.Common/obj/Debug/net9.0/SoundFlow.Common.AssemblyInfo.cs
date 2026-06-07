@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SoundFlow.Common")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3c8ea8885c23788c44ee1434fc2708a7e3e9bfcf")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+24536c2a0ad1845815b8363a9055ab669b0544bd")]
 [assembly: System.Reflection.AssemblyProductAttribute("SoundFlow.Common")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SoundFlow.Common")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
