@@ -48,3 +48,5 @@ CREATE TABLE playlist_rules (
     exclude_artist TEXT,
     exclude_genre TEXT
 );
+
+select*from mp3_files;
