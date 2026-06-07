@@ -10,3 +10,4 @@ D:\L3\GProjet\SoundFlow\SoundFlow.Common\obj\Debug\net9.0\SoundFlow.Common.dll
 D:\L3\GProjet\SoundFlow\SoundFlow.Common\obj\Debug\net9.0\refint\SoundFlow.Common.dll
 D:\L3\GProjet\SoundFlow\SoundFlow.Common\obj\Debug\net9.0\SoundFlow.Common.pdb
 D:\L3\GProjet\SoundFlow\SoundFlow.Common\obj\Debug\net9.0\ref\SoundFlow.Common.dll
+D:\L3\GProjet\SoundFlow\SoundFlow.Common\obj\Debug\net9.0\SoundFlow.Common.csproj.AssemblyReference.cache

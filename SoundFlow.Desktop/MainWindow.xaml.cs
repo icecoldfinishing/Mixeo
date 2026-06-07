@@ -1,7 +1,12 @@
 using System;
 using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using SoundFlow.Common;
 using SoundFlow.Desktop.Models;
 using SoundFlow.Desktop.Services;
 
@@ -21,6 +26,9 @@ public partial class MainWindow : Window
 
         timer.Interval = TimeSpan.FromMinutes(5);
         timer.Tick += ScanFolder;
+
+        // Start Program 2 as a background worker
+        StartProgram2();
     }
 
     private void SelectFolder_Click(object sender, RoutedEventArgs e)
@@ -48,8 +56,101 @@ public partial class MainWindow : Window
             return;
 
         var files = watcher.ScanFolder(selectedFolder);
-
         Mp3Grid.ItemsSource = files;
+
+        // Run Program 1 in background: publish file paths to RabbitMQ
+        Task.Run(async () =>
+        {
+            FileLogger.Log("program1", $"--- Started folder scan: {selectedFolder} ---");
+            foreach (var file in files)
+            {
+                if (File.Exists(file.AbsolutePath))
+                {
+                    try
+                    {
+                        FileLogger.Log("program1", $"Publishing file path to RabbitMQ: {file.AbsolutePath}");
+                        await RabbitPublisher.PublishMessageAsync(RabbitConfig.QueueFiles, file.AbsolutePath);
+                        FileLogger.Log("program1", $"Successfully published: {file.AbsolutePath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        FileLogger.Log("program1", $"Error publishing {file.AbsolutePath}: {ex.Message}");
+                    }
+                }
+            }
+            FileLogger.Log("program1", $"--- Folder scan complete. Found {files.Count} files. ---");
+        });
+    }
+
+    private void StartProgram2()
+    {
+        Task.Run(async () =>
+        {
+            FileLogger.Log("program2", "Program 2 worker starting...");
+            try
+            {
+                var factory = RabbitConfig.CreateConnectionFactory();
+                var connection = await factory.CreateConnectionAsync();
+                var channel = await connection.CreateChannelAsync();
+
+                await channel.QueueDeclareAsync(
+                    queue: RabbitConfig.QueueFiles,
+                    durable: false,
+                    exclusive: false,
+                    autoDelete: false
+                );
+
+                await channel.QueueDeclareAsync(
+                    queue: RabbitConfig.QueueMetadata,
+                    durable: false,
+                    exclusive: false,
+                    autoDelete: false
+                );
+
+                var consumer = new AsyncEventingBasicConsumer(channel);
+                consumer.ReceivedAsync += async (sender, e) =>
+                {
+                    var path = Encoding.UTF8.GetString(e.Body.ToArray());
+                    FileLogger.Log("program2", $"Received file path from queue: {path}");
+
+                    if (File.Exists(path))
+                    {
+                        try
+                        {
+                            var meta = metadataService.Extract(path);
+                            FileLogger.Log("program2", $"Extracted metadata for: {path} (Title: '{meta.Title}', Artist: '{meta.Artist}')");
+
+                            await RabbitPublisher.PublishJsonAsync(RabbitConfig.QueueMetadata, meta);
+                            FileLogger.Log("program2", $"Published metadata to {RabbitConfig.QueueMetadata} queue for: {path}");
+
+                            await channel.BasicAckAsync(e.DeliveryTag, multiple: false);
+                        }
+                        catch (Exception ex)
+                        {
+                            FileLogger.Log("program2", $"Error processing file {path}: {ex.Message}");
+                            await channel.BasicNackAsync(e.DeliveryTag, multiple: false, requeue: false);
+                        }
+                    }
+                    else
+                    {
+                        FileLogger.Log("program2", $"File not found: {path}. Skipping and acknowledging.");
+                        await channel.BasicAckAsync(e.DeliveryTag, multiple: false);
+                    }
+                };
+
+                await channel.BasicConsumeAsync(
+                    queue: RabbitConfig.QueueFiles,
+                    autoAck: false,
+                    consumer: consumer
+                );
+
+                FileLogger.Log("program2", "Program 2 worker is listening on queue: " + RabbitConfig.QueueFiles);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Log("program2", $"Program 2 worker failed to start: {ex.Message}");
+            }
+        });
     }
 
     private void Mp3Grid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

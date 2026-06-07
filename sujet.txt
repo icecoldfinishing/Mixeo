@@ -1,0 +1,24 @@
+
+Applications plusieurs composants
+Gestion mp3 et générations de playlist
+Partie: Back desktop(c#) et front web (react)
+
+Cote desktop app standlone
+On a repertoire qui contient musique, on download et on bascule depuis le repertoire
+1) Y a programme qui ecoute le repertoire sur le mvt: entre musique( chemin absolue, titre , mp3 )
+Recuperation liste mp3 tous les 5min
+Sortie list file mp3
+2) programme récupération list et pour chaque file extraction de mp3 metadata(album,titre,genre,date,etc) disponible   en utilisant les lib
+3) recupere sortie de 2eme programme nom et metadata puis appel api et mets dans api les fichiers et metadata
+Si envoye succes alors on supprime dans le fichier d'origine mp3 dans le traitement ( extrait et envoye) afin d'éviter que le fichier soit retraité 
+-Les 3 programmes écrits tous dans log file, et les programmes sans bd
+On utilise method message blocker cest a dire pas sync mais quand un programme termine on lenvoie dans autre composants,  chaque programme different queu (rabbit mq)
+Api save dans chemin et bd
+
+Web
+Crud mp3
+Generation playlist
+Client insere critere ( duree total, genre , langue , artist, exclut genre artist)
+Quand playlist genere le client peut soit sauvegarder soit ajouter musique enlever ou remplacer 
+Quand playlist sauvegarder le client peux  ecouter, télécharger format zip
+Metadata sauvegarder en bd
