@@ -1,21 +1,25 @@
-
-music/
-*.log
-*.tmp
-*.bak
-*.swp
-.DS_Store
+# Dossiers de build et dépendances
+**/bin/
+**/obj/
 node_modules/
 dist/
 build/
 coverage/
+
+# Fichiers de configuration sensibles et locaux
 .env
 .idea/
 .vscode/
 *.iml
 *.sublime-project
 *.sublime-workspace
-SoundFlow.Api/bin/
-SoundFlow.Api/obj/
-SoundFlow.Desktop/bin/
-SoundFlow.Desktop/obj/
+
+# Fichiers temporaires et logs
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+
+# Médias spécifiques au projet
+music/
