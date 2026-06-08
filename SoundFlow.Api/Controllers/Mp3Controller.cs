@@ -27,7 +27,7 @@ public class Mp3Controller : ControllerBase
         [FromForm] int? duration,
         [FromForm] IFormFile? file)
     {
-        string filePath = "";
+        string? filePath = null;
 
         if (file != null && file.Length > 0)
         {
