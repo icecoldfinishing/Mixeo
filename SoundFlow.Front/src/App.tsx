@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Mp3Crud } from './components/Mp3Crud';
+import { PlaylistBuilder } from './components/Playlistbuilder';
 
 const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => {
   const location = useLocation();
@@ -25,25 +26,6 @@ const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, chil
   );
 };
 
-const PlaylistsPage: React.FC = () => (
-  <div style={{
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    gap: 12,
-    color: '#333',
-  }}>
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" aria-hidden="true">
-      <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-      <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-      <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-    </svg>
-    <p style={{ fontSize: 13, color: '#444' }}>Le module de playlists sera intégré ici.</p>
-  </div>
-);
-
 const AppInner: React.FC = () => (
   <div style={s.root}>
     <nav style={s.nav}>
@@ -61,7 +43,7 @@ const AppInner: React.FC = () => (
     <main style={s.main}>
       <Routes>
         <Route path="/" element={<Mp3Crud />} />
-        <Route path="/playlists" element={<PlaylistsPage />} />
+        <Route path="/playlists" element={<PlaylistBuilder />} />
       </Routes>
     </main>
   </div>
