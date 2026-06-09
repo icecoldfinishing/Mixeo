@@ -1,0 +1,201 @@
+/* VARIABLES */
+
+:root {
+  --text: #6b6375;
+  --text-h: #08060d;
+
+  --bg: #ffffff;
+
+  --border: #e5e4e7;
+
+  --code-bg: #f4f3ec;
+
+  --accent: #aa3bff;
+
+  --accent-bg: rgba(170, 59, 255, 0.1);
+
+  --accent-border: rgba(170, 59, 255, 0.45);
+
+  --social-bg: rgba(244, 243, 236, 0.5);
+
+  --shadow:
+    rgba(0, 0, 0, 0.10) 0 10px 15px -3px,
+    rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+
+  --sans:
+    system-ui,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+
+  --heading:
+    system-ui,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+
+  --mono:
+    ui-monospace,
+    Consolas,
+    monospace;
+
+  font-family: var(--sans);
+
+  font-size: 18px;
+
+  line-height: 1.45;
+
+  letter-spacing: .18px;
+
+  color: var(--text);
+
+  background: var(--bg);
+
+  color-scheme: light dark;
+
+  text-rendering: optimizeLegibility;
+
+  font-synthesis: none;
+
+  -webkit-font-smoothing: antialiased;
+
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* DARK */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+
+    --text-h: #f3f4f6;
+
+    --bg: #16171d;
+
+    --border: #2e303a;
+
+    --code-bg: #1f2028;
+
+    --accent: #c084fc;
+
+    --accent-bg: rgba(192, 132, 252, 0.15);
+
+    --accent-border: rgba(192, 132, 252, 0.45);
+
+    --social-bg: rgba(47, 48, 58, .5);
+
+    --shadow:
+      rgba(0,0,0,.45) 0 10px 15px -3px,
+      rgba(0,0,0,.25) 0 4px 6px -2px;
+  }
+
+  .button-icon {
+    filter: invert(1);
+  }
+}
+
+/* RESET */
+
+* {
+  margin: 0;
+
+  padding: 0;
+
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+
+  min-height: 100vh;
+}
+
+body {
+  background: var(--bg);
+
+  overflow-x: hidden;
+}
+
+/* FULL SCREEN */
+
+#root {
+  display: flex;
+
+  flex-direction: column;
+
+  min-height: 100vh;
+
+  width: 100%;
+
+  max-width: none;
+
+  margin: 0;
+
+  text-align: center;
+}
+
+/* TITLES */
+
+h1,
+h2 {
+  color: var(--text-h);
+
+  font-family: var(--heading);
+
+  font-weight: 600;
+}
+
+h1 {
+  font-size: clamp(36px, 6vw, 64px);
+
+  letter-spacing: -2px;
+
+  margin: 32px 0;
+}
+
+h2 {
+  font-size: clamp(22px, 3vw, 28px);
+
+  margin-bottom: 8px;
+
+  line-height: 1.2;
+}
+
+p {
+  color: var(--text);
+}
+
+/* CODE */
+
+code,
+.counter {
+  font-family: var(--mono);
+
+  color: var(--text-h);
+
+  border-radius: 6px;
+
+  display: inline-flex;
+}
+
+code {
+  background: var(--code-bg);
+
+  padding: 6px 10px;
+
+  font-size: 14px;
+}
+
+/* MOBILE */
+
+@media (max-width: 1024px) {
+  :root {
+    font-size: 16px;
+  }
+
+  h1 {
+    margin: 20px 0;
+  }
+}
