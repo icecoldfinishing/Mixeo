@@ -22,6 +22,9 @@ public class Mp3File
     [Column("genre")]
     public string? Genre { get; set; }
 
+    [Column("language")]
+    public string? Language { get; set; }
+
     [Column("year")]
     public int? Year { get; set; }
 

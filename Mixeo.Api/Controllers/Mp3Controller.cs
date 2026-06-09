@@ -23,6 +23,7 @@ public class Mp3Controller : ControllerBase
         [FromForm] string? artist,
         [FromForm] string? album,
         [FromForm] string? genre,
+        [FromForm] string? language,
         [FromForm] int? year,
         [FromForm] int? duration,
         [FromForm] IFormFile? file)
@@ -46,6 +47,7 @@ public class Mp3Controller : ControllerBase
             Artist = artist,
             Album = album,
             Genre = genre,
+            Language = language,
             Year = year ?? 0,
             Duration = duration ?? 0,
             FilePath = filePath,
@@ -84,6 +86,7 @@ public class Mp3Controller : ControllerBase
         mp3.Artist = updatedMp3.Artist;
         mp3.Album = updatedMp3.Album;
         mp3.Genre = updatedMp3.Genre;
+        mp3.Language = updatedMp3.Language;
         mp3.Year = updatedMp3.Year;
         mp3.Duration = updatedMp3.Duration;
 

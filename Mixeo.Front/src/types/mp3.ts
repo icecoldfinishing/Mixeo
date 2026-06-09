@@ -5,6 +5,7 @@ export interface Mp3File {
     artist: string | null;
     album: string | null;
     genre: string | null;
+    language: string | null;
     year: number | null;
     duration: number | null;
     filePath: string | null;

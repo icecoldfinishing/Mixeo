@@ -1,18 +1,26 @@
 export interface PlaylistCriteria {
-    totalDuration: number | null;       // en minutes
+    totalDuration: number | null;       // en secondes (envoyé à l'API)
     genres: string[];                   // genres souhaités
     languages: string[];                // langues souhaitées
     artists: string[];                  // artistes souhaités
-    excludedGenres: string[];           // genres exclus
-    excludedArtists: string[];          // artistes exclus
+    excludeGenres: string[];           // genres exclus
+    excludeArtists: string[];          // artistes exclus
+}
+
+export interface PlaylistTrack {
+    id: number;
+    playlistId: number;
+    mp3Id: number;
+    mp3File: import('./mp3').Mp3File | null;
 }
 
 export interface Playlist {
     id: number;
     name: string;
-    criteria: PlaylistCriteria;
-    trackIds: number[];
+    totalDuration: number;
+    userId: number | null;
     createdAt: string;
+    tracks: PlaylistTrack[];
 }
 
 export const EMPTY_CRITERIA: PlaylistCriteria = {
@@ -20,8 +28,8 @@ export const EMPTY_CRITERIA: PlaylistCriteria = {
     genres: [],
     languages: [],
     artists: [],
-    excludedGenres: [],
-    excludedArtists: [],
+    excludeGenres: [],
+    excludeArtists: [],
 };
 
 export const GENRE_SUGGESTIONS = [
