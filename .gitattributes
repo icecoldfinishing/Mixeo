@@ -1,10 +1,13 @@
-# Exclure les fichiers JavaScript compilés à partir de TypeScript
+# Ignorer complètement TypeScript (fichiers .ts et .tsx) des statistiques
+*.ts linguist-vendored
+*.tsx linguist-vendored
+
+# Ignorer également les fichiers de build JavaScript générés
 *.js linguist-vendored
 *.js.map linguist-vendored
-
-# Exclure les dossiers de build et de dépendances
+node_modules/* linguist-vendored
 dist/* linguist-vendored
 build/* linguist-vendored
-node_modules/* linguist-vendored
-bin/* linguist-vendored
-obj/* linguist-vendored
+
+# Forcer l'analyse exclusive du C#
+*.cs linguist-language=C#
