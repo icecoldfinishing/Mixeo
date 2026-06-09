@@ -1,0 +1,10 @@
+# Exclure les fichiers JavaScript compilés à partir de TypeScript
+*.js linguist-vendored
+*.js.map linguist-vendored
+
+# Exclure les dossiers de build et de dépendances
+dist/* linguist-vendored
+build/* linguist-vendored
+node_modules/* linguist-vendored
+bin/* linguist-vendored
+obj/* linguist-vendored
