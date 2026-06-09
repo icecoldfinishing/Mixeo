@@ -1,6 +1,7 @@
 # Dossiers de build et dépendances
 **/bin/
 **/obj/
+**/Uploads/
 node_modules/
 dist/
 build/

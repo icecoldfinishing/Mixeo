@@ -1,4 +1,4 @@
-# Guide de configuration et test de SoundFlow
+# Guide de configuration et test de Mixeo
 
 Ce document explique comment configurer et tester le système de traitement MP3 avec RabbitMQ.
 
@@ -16,37 +16,37 @@ Accès console : http://localhost:15672 (guest/guest)
 
 ## 3. Configuration de l'API
 - Base de données : Assurez-vous que PostgreSQL tourne et que la base `pg4` existe.
-- Chaîne de connexion dans `Program.cs` de `SoundFlow.Api` :
+- Chaîne de connexion dans `Program.cs` de `Mixeo.Api` :
   `Host=localhost;Database=pg4;Username=postgres;Password=postgres`
 
 Lancer l'API :
 ```bash
-cd SoundFlow.Api
+cd Mixeo.Api
 dotnet run
 ```
 
 ## 4. Lancement de l'Uploader (Programme 3)
 Ce programme écoute les métadonnées extraites et les envoie à l'API.
 ```bash
-cd SoundFlow.Uploader
+cd Mixeo.Uploader
 dotnet run
 ```
 
 ## 5. Utilisation du Desktop (Programme 1 & 2)
-1. Lancer `SoundFlow.Desktop`.
+1. Lancer `Mixeo.Desktop`.
 2. Cliquez sur "Choisir dossier" et sélectionnez un dossier contenant des fichiers `.mp3`.
 3. **Programme 1** : Scanne le dossier et publie les chemins de fichiers dans la file `mp3.files`.
 4. **Programme 2** : (Background worker dans Desktop) Récupère les chemins, extrait les métadonnées via `TagLibSharp`, et les publie dans la file `mp3.metadata`.
-5. **Logs** : Les logs de chaque programme sont générés dans le dossier `logs/` du répertoire d'exécution (ex: `SoundFlow.Desktop/bin/Debug/net9.0/logs/`).
+5. **Logs** : Les logs de chaque programme sont générés dans le dossier `logs/` du répertoire d'exécution (ex: `Mixeo.Desktop/bin/Debug/net9.0/logs/`).
 
 ## 6. Vérification du flux
 1. Une fois le dossier choisi, vérifiez `program1.log` pour voir les fichiers scannés.
 2. Vérifiez `program2.log` pour voir l'extraction des métadonnées.
-3. Vérifiez la console de `SoundFlow.Uploader` (ou `program3.log`) pour confirmer l'upload réussi et la suppression du fichier local.
+3. Vérifiez la console de `Mixeo.Uploader` (ou `program3.log`) pour confirmer l'upload réussi et la suppression du fichier local.
 4. Vérifiez la base de données ou faites un GET sur l'API pour voir les nouveaux MP3 enregistrés.
 
 ## Configuration RabbitMQ
-La configuration centralisée se trouve dans `SoundFlow.Common/RabbitConfig.cs` :
+La configuration centralisée se trouve dans `Mixeo.Common/RabbitConfig.cs` :
 - Host : `localhost`
 - User/Pass : `guest/guest`
 - Queues : `mp3.files`, `mp3.metadata`
