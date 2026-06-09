@@ -2,11 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { Mp3File } from '../types/mp3';
 
 const API_URL = 'http://localhost:5021/api/mp3';
+const AUDIO_BASE = 'http://localhost:5021/';
 
 function fmtDuration(sec: number | null | undefined): string {
   if (!sec) return '—';
   return `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, '0')}`;
 }
+
+type SortField = 'year' | 'duration' | null;
+type SortDir = 'asc' | 'desc';
 
 export const Mp3Crud: React.FC = () => {
   const [tracks, setTracks] = useState<Mp3File[]>([]);
@@ -14,6 +18,7 @@ export const Mp3Crud: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [status, setStatus] = useState('');
 
+  // Form fields
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
   const [album, setAlbum] = useState('');
@@ -23,6 +28,22 @@ export const Mp3Crud: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [dragging, setDragging] = useState(false);
+  const [useMetadata, setUseMetadata] = useState(false);
+
+  // Filter state
+  const [filterTitle, setFilterTitle] = useState('');
+  const [filterArtist, setFilterArtist] = useState('');
+  const [filterAlbum, setFilterAlbum] = useState('');
+  const [filterGenre, setFilterGenre] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Sort state
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  // Playback state
+  const [playingId, setPlayingId] = useState<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,11 +63,74 @@ export const Mp3Crud: React.FC = () => {
     }
   };
 
+  // ── Filter + Sort ──────────────────────────────────────
+  const filteredTracks = React.useMemo(() => {
+    let result = tracks.filter(t => {
+      const matchTitle = !filterTitle || (t.title || '').toLowerCase().includes(filterTitle.toLowerCase());
+      const matchArtist = !filterArtist || (t.artist || '').toLowerCase().includes(filterArtist.toLowerCase());
+      const matchAlbum = !filterAlbum || (t.album || '').toLowerCase().includes(filterAlbum.toLowerCase());
+      const matchGenre = !filterGenre || (t.genre || '').toLowerCase().includes(filterGenre.toLowerCase());
+      return matchTitle && matchArtist && matchAlbum && matchGenre;
+    });
+
+    if (sortField) {
+      result = [...result].sort((a, b) => {
+        const av = sortField === 'year' ? (a.year ?? 0) : (a.duration ?? 0);
+        const bv = sortField === 'year' ? (b.year ?? 0) : (b.duration ?? 0);
+        return sortDir === 'asc' ? av - bv : bv - av;
+      });
+    }
+
+    return result;
+  }, [tracks, filterTitle, filterArtist, filterAlbum, filterGenre, sortField, sortDir]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const hasActiveFilters = filterTitle || filterArtist || filterAlbum || filterGenre;
+
+  const clearFilters = () => {
+    setFilterTitle('');
+    setFilterArtist('');
+    setFilterAlbum('');
+    setFilterGenre('');
+  };
+
+  // ── Playback ───────────────────────────────────────────
+  const handlePlay = (track: Mp3File) => {
+    if (!track.filePath) return;
+
+    if (playingId === track.id) {
+      audioRef.current?.pause();
+      setPlayingId(null);
+      return;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+
+    const url = `${AUDIO_BASE}${track.filePath.replace(/\\/g, '/')}`;
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    audio.play().catch(() => setStatusMsg('Impossible de lire ce fichier.'));
+    audio.onended = () => setPlayingId(null);
+    setPlayingId(track.id);
+  };
+
+  // ── Sidebar ────────────────────────────────────────────
   const openAdd = () => {
     setEditingId(null);
     setTitle(''); setArtist(''); setAlbum('');
     setGenre(''); setYear(''); setDuration('');
     setFile(null); setFileName('');
+    setUseMetadata(false);
     setSidebarOpen(true);
   };
 
@@ -68,9 +152,8 @@ export const Mp3Crud: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!title.trim()) return;
-
     if (editingId !== null) {
+      if (!title.trim()) return;
       const body = {
         title: title || null,
         artist: artist || null,
@@ -89,22 +172,32 @@ export const Mp3Crud: React.FC = () => {
       } catch { setStatusMsg('Erreur lors de la modification.'); }
     } else {
       const fd = new FormData();
-      fd.append('title', title);
-      if (artist) fd.append('artist', artist);
-      if (album) fd.append('album', album);
-      if (genre) fd.append('genre', genre);
-      if (year) fd.append('year', year);
-      if (duration) fd.append('duration', duration);
-      if (file) fd.append('file', file);
+      if (useMetadata) {
+        // Only send the file — backend reads metadata
+        if (!file) { setStatusMsg('Veuillez sélectionner un fichier MP3.'); return; }
+        fd.append('file', file);
+        fd.append('useMetadata', 'true');
+      } else {
+        if (!title.trim()) return;
+        fd.append('title', title);
+        if (artist) fd.append('artist', artist);
+        if (album) fd.append('album', album);
+        if (genre) fd.append('genre', genre);
+        if (year) fd.append('year', year);
+        if (duration) fd.append('duration', duration);
+        if (file) fd.append('file', file);
+      }
       try {
         const res = await fetch(`${API_URL}/upload`, { method: 'POST', body: fd });
         if (res.ok) { setStatusMsg('Morceau ajouté.'); closeSidebar(); fetchTracks(); }
+        else { setStatusMsg("Erreur lors de l'upload."); }
       } catch { setStatusMsg("Erreur lors de l'upload."); }
     }
   };
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Supprimer ce morceau ?')) return;
+    if (playingId === id) { audioRef.current?.pause(); setPlayingId(null); }
     try {
       const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -131,27 +224,61 @@ export const Mp3Crud: React.FC = () => {
     setFileName(f?.name ?? '');
   };
 
+  // ── Sort icon helper ───────────────────────────────────
+  const SortIcon = ({ field }: { field: SortField }) => {
+    const active = sortField === field;
+    return (
+      <span style={{ marginLeft: 4, opacity: active ? 1 : 0.25, fontSize: 10 }}>
+        {active && sortDir === 'desc' ? '↓' : '↑'}
+      </span>
+    );
+  };
+
   return (
     <div style={s.root}>
       {/* Toolbar */}
       <header style={s.toolbar}>
         <div style={s.toolbarLeft}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
           </svg>
           <span style={s.toolbarTitle}>Bibliothèque MP3</span>
-          <span style={s.trackCount}>{tracks.length} morceau{tracks.length !== 1 ? 'x' : ''}</span>
+          <span style={s.trackCount}>{filteredTracks.length}/{tracks.length} morceau{tracks.length !== 1 ? 'x' : ''}</span>
         </div>
-        <button
-          style={s.addBtn}
-          onClick={sidebarOpen ? closeSidebar : openAdd}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-            {sidebarOpen ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></> : <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>}
-          </svg>
-          {sidebarOpen ? 'Fermer' : 'Ajouter'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            style={{ ...s.addBtn, ...(hasActiveFilters ? s.addBtnActive : {}) }}
+            onClick={() => setShowFilters(f => !f)}
+            title="Filtres"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+            </svg>
+            Filtres{hasActiveFilters ? ` (${[filterTitle, filterArtist, filterAlbum, filterGenre].filter(Boolean).length})` : ''}
+          </button>
+          <button style={s.addBtn} onClick={sidebarOpen ? closeSidebar : openAdd}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              {sidebarOpen
+                ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
+                : <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>}
+            </svg>
+            {sidebarOpen ? 'Fermer' : 'Ajouter'}
+          </button>
+        </div>
       </header>
+
+      {/* Filter bar */}
+      {showFilters && (
+        <div style={s.filterBar}>
+          <FilterInput placeholder="Titre…" value={filterTitle} onChange={setFilterTitle} />
+          <FilterInput placeholder="Artiste…" value={filterArtist} onChange={setFilterArtist} />
+          <FilterInput placeholder="Album…" value={filterAlbum} onChange={setFilterAlbum} />
+          <FilterInput placeholder="Genre…" value={filterGenre} onChange={setFilterGenre} />
+          {hasActiveFilters && (
+            <button style={s.clearBtn} onClick={clearFilters}>Effacer</button>
+          )}
+        </div>
+      )}
 
       {/* Body */}
       <div style={s.body}>
@@ -163,32 +290,63 @@ export const Mp3Crud: React.FC = () => {
               {editingId !== null ? `Modifier #${editingId}` : 'Nouveau morceau'}
             </p>
 
-            <Field label="Titre *">
-              <input style={s.input} value={title} onChange={e => setTitle(e.target.value)} placeholder="Titre du morceau" autoFocus />
-            </Field>
+            {/* Metadata toggle (add only) */}
+            {editingId === null && (
+              <div style={s.toggleRow}>
+                <span style={s.toggleLabel}>Source des infos</span>
+                <div style={s.toggleGroup}>
+                  <button
+                    style={{ ...s.toggleBtn, ...(useMetadata ? {} : s.toggleBtnActive) }}
+                    onClick={() => setUseMetadata(false)}
+                  >
+                    Champs manuels
+                  </button>
+                  <button
+                    style={{ ...s.toggleBtn, ...(useMetadata ? s.toggleBtnActive : {}) }}
+                    onClick={() => setUseMetadata(true)}
+                  >
+                    Métadonnées fichier
+                  </button>
+                </div>
+              </div>
+            )}
 
-            <div style={s.fieldRow}>
-              <Field label="Artiste">
-                <input style={s.input} value={artist} onChange={e => setArtist(e.target.value)} placeholder="Artiste" />
-              </Field>
-              <Field label="Album">
-                <input style={s.input} value={album} onChange={e => setAlbum(e.target.value)} placeholder="Album" />
-              </Field>
-            </div>
+            {/* Manual fields (or edit mode) */}
+            {(!useMetadata || editingId !== null) && (
+              <>
+                <Field label="Titre *">
+                  <input style={s.input} value={title} onChange={e => setTitle(e.target.value)} placeholder="Titre du morceau" autoFocus />
+                </Field>
+                <div style={s.fieldRow}>
+                  <Field label="Artiste">
+                    <input style={s.input} value={artist} onChange={e => setArtist(e.target.value)} placeholder="Artiste" />
+                  </Field>
+                  <Field label="Album">
+                    <input style={s.input} value={album} onChange={e => setAlbum(e.target.value)} placeholder="Album" />
+                  </Field>
+                </div>
+                <div style={s.fieldRow}>
+                  <Field label="Genre">
+                    <input style={s.input} value={genre} onChange={e => setGenre(e.target.value)} placeholder="Genre" />
+                  </Field>
+                  <Field label="Année">
+                    <input style={s.input} type="number" value={year} onChange={e => setYear(e.target.value)} placeholder="2024" />
+                  </Field>
+                </div>
+                <Field label="Durée (secondes)">
+                  <input style={s.input} type="number" value={duration} onChange={e => setDuration(e.target.value)} placeholder="180" />
+                </Field>
+              </>
+            )}
 
-            <div style={s.fieldRow}>
-              <Field label="Genre">
-                <input style={s.input} value={genre} onChange={e => setGenre(e.target.value)} placeholder="Genre" />
-              </Field>
-              <Field label="Année">
-                <input style={s.input} type="number" value={year} onChange={e => setYear(e.target.value)} placeholder="2024" />
-              </Field>
-            </div>
+            {/* Metadata mode hint */}
+            {useMetadata && editingId === null && (
+              <p style={s.metaHint}>
+                Les informations (titre, artiste, album, genre, année, durée) seront lues directement depuis les tags ID3 du fichier MP3.
+              </p>
+            )}
 
-            <Field label="Durée (secondes)">
-              <input style={s.input} type="number" value={duration} onChange={e => setDuration(e.target.value)} placeholder="180" />
-            </Field>
-
+            {/* File drop zone (add only) */}
             {editingId === null && (
               <div
                 style={{ ...s.dropZone, ...(dragging ? s.dropZoneActive : {}) }}
@@ -197,7 +355,7 @@ export const Mp3Crud: React.FC = () => {
                 onDragLeave={() => setDragging(false)}
                 onDrop={handleFileDrop}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ opacity: 0.5 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
                 <span style={s.dropLabel}>{fileName || 'Déposer un fichier MP3'}</span>
@@ -219,28 +377,60 @@ export const Mp3Crud: React.FC = () => {
           <table style={s.table}>
             <thead>
               <tr>
-                {['ID', 'Titre', 'Artiste', 'Album', 'Genre', 'Année', 'Durée', ''].map((h, i) => (
-                  <th key={i} style={{ ...s.th, ...(i === 7 ? s.thCenter : {}) }}>{h}</th>
-                ))}
+                <th style={{ ...s.th, width: 36 }}></th>
+                <th style={{ ...s.th, width: 52 }}>ID</th>
+                <th style={s.th}>Titre</th>
+                <th style={s.th}>Artiste</th>
+                <th style={s.th}>Album</th>
+                <th style={s.th}>Genre</th>
+                <th
+                  style={{ ...s.th, cursor: 'pointer', userSelect: 'none', width: 80 }}
+                  onClick={() => handleSort('year')}
+                  title="Trier par année"
+                >
+                  Année <SortIcon field="year" />
+                </th>
+                <th
+                  style={{ ...s.th, cursor: 'pointer', userSelect: 'none', width: 80 }}
+                  onClick={() => handleSort('duration')}
+                  title="Trier par durée"
+                >
+                  Durée <SortIcon field="duration" />
+                </th>
+                <th style={{ ...s.th, ...s.thCenter, width: 80 }}></th>
               </tr>
             </thead>
             <tbody>
-              {tracks.length === 0 ? (
+              {filteredTracks.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={s.empty}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" aria-hidden="true" style={{ display: 'block', margin: '0 auto 8px', opacity: 0.3 }}>
+                  <td colSpan={9} style={s.empty}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" style={{ display: 'block', margin: '0 auto 8px', opacity: 0.3 }}>
                       <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
                       <line x1="2" y1="2" x2="22" y2="22" strokeWidth="1.5"/>
                     </svg>
-                    Aucun fichier MP3
+                    {hasActiveFilters ? 'Aucun résultat pour ces filtres' : 'Aucun fichier MP3'}
                   </td>
                 </tr>
               ) : (
-                tracks.map(t => (
-                  <tr
-                    key={t.id}
-                    style={{ ...s.tr, ...(editingId === t.id ? s.trActive : {}) }}
-                  >
+                filteredTracks.map(t => (
+                  <tr key={t.id} style={{ ...s.tr, ...(editingId === t.id ? s.trActive : {}) }}>
+                    {/* Play button */}
+                    <td style={{ ...s.td, padding: '9px 6px 9px 12px', width: 36 }}>
+                      {t.filePath ? (
+                        <button
+                          style={{ ...s.playBtn, ...(playingId === t.id ? s.playBtnActive : {}) }}
+                          title={playingId === t.id ? 'Pause' : 'Écouter'}
+                          onClick={() => handlePlay(t)}
+                        >
+                          {playingId === t.id
+                            ? <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                            : <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                          }
+                        </button>
+                      ) : (
+                        <span style={{ display: 'inline-block', width: 24 }} />
+                      )}
+                    </td>
                     <td style={{ ...s.td, ...s.tdMono }}>{t.id}</td>
                     <td style={{ ...s.td, ...s.tdBold }} title={t.title || ''}>{t.title || 'Sans titre'}</td>
                     <td style={{ ...s.td, ...s.tdMuted }} title={t.artist || ''}>{t.artist || '—'}</td>
@@ -252,13 +442,13 @@ export const Mp3Crud: React.FC = () => {
                     <td style={{ ...s.td, ...s.tdMuted }}>{fmtDuration(t.duration)}</td>
                     <td style={{ ...s.td, ...s.tdActions }}>
                       <button style={s.iconBtn} title="Modifier" onClick={() => openEdit(t)}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                       </button>
                       <button style={{ ...s.iconBtn, ...s.iconBtnDel }} title="Supprimer" onClick={() => handleDelete(t.id)}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
                           <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
                           <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                         </svg>
@@ -278,12 +468,21 @@ export const Mp3Crud: React.FC = () => {
   );
 };
 
-/* ─── sub-component ─── */
+/* ─── sub-components ─── */
 const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
     <label style={s.fieldLabel}>{label}</label>
     {children}
   </div>
+);
+
+const FilterInput: React.FC<{ placeholder: string; value: string; onChange: (v: string) => void }> = ({ placeholder, value, onChange }) => (
+  <input
+    style={s.filterInput}
+    placeholder={placeholder}
+    value={value}
+    onChange={e => onChange(e.target.value)}
+  />
 );
 
 /* ─── styles ─── */
@@ -335,6 +534,41 @@ const s: Record<string, React.CSSProperties> = {
     color: '#ccc',
     cursor: 'pointer',
   },
+  addBtnActive: {
+    borderColor: 'rgba(140,180,255,0.35)',
+    color: '#8cb4ff',
+    background: 'rgba(140,180,255,0.06)',
+  },
+  // Filter bar
+  filterBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '8px 20px',
+    borderBottom: '0.5px solid rgba(255,255,255,0.06)',
+    backgroundColor: '#0f0f0f',
+    flexShrink: 0,
+    flexWrap: 'wrap' as const,
+  },
+  filterInput: {
+    fontSize: 12,
+    padding: '5px 9px',
+    borderRadius: 5,
+    border: '0.5px solid rgba(255,255,255,0.1)',
+    background: '#1a1a1a',
+    color: '#e8e6e1',
+    outline: 'none',
+    width: 140,
+  },
+  clearBtn: {
+    fontSize: 12,
+    padding: '5px 10px',
+    borderRadius: 5,
+    border: '0.5px solid rgba(255,100,100,0.2)',
+    background: 'transparent',
+    color: '#b05555',
+    cursor: 'pointer',
+  },
   body: {
     display: 'flex',
     flex: 1,
@@ -358,6 +592,46 @@ const s: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
     marginBottom: 2,
+  },
+  // Metadata toggle
+  toggleRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  toggleLabel: {
+    fontSize: 11,
+    color: '#555',
+  },
+  toggleGroup: {
+    display: 'flex',
+    borderRadius: 6,
+    border: '0.5px solid rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  toggleBtn: {
+    flex: 1,
+    padding: '6px 8px',
+    fontSize: 11,
+    fontWeight: 500,
+    border: 'none',
+    background: 'transparent',
+    color: '#555',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
+  toggleBtnActive: {
+    background: 'rgba(255,255,255,0.08)',
+    color: '#e8e6e1',
+  },
+  metaHint: {
+    fontSize: 11,
+    color: '#555',
+    lineHeight: 1.6,
+    padding: '8px 10px',
+    background: 'rgba(255,255,255,0.03)',
+    borderRadius: 6,
+    border: '0.5px solid rgba(255,255,255,0.06)',
   },
   fieldRow: {
     display: 'grid',
@@ -454,7 +728,6 @@ const s: Record<string, React.CSSProperties> = {
   },
   thCenter: {
     textAlign: 'center',
-    width: 80,
   },
   tr: {
     borderBottom: '0.5px solid rgba(255,255,255,0.04)',
@@ -474,7 +747,6 @@ const s: Record<string, React.CSSProperties> = {
   tdMono: {
     color: '#444',
     fontVariantNumeric: 'tabular-nums',
-    width: 52,
   },
   tdBold: {
     fontWeight: 500,
@@ -496,6 +768,26 @@ const s: Record<string, React.CSSProperties> = {
     background: 'rgba(255,255,255,0.05)',
     color: '#888',
     border: '0.5px solid rgba(255,255,255,0.07)',
+  },
+  // Play button
+  playBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: '50%',
+    border: '0.5px solid rgba(255,255,255,0.1)',
+    background: 'transparent',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    color: '#666',
+    transition: 'all 0.15s',
+    flexShrink: 0,
+  },
+  playBtnActive: {
+    color: '#8cb4ff',
+    borderColor: 'rgba(140,180,255,0.35)',
+    background: 'rgba(140,180,255,0.08)',
   },
   iconBtn: {
     width: 28,
