@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { Mp3File } from '../types/mp3';
 
 const API_URL = 'http://localhost:5021/api/mp3';
-const AUDIO_BASE = 'http://localhost:5021/';
+const STREAM_URL = 'http://localhost:5021/api/playlists/stream';
 
 function fmtDuration(sec: number | null | undefined): string {
   if (!sec) return '—';
@@ -104,26 +104,52 @@ export const Mp3Crud: React.FC = () => {
 
   // ── Playback ───────────────────────────────────────────
   const handlePlay = (track: Mp3File) => {
-    if (!track.filePath) return;
+    if (!track.id || !track.filePath) return;
 
+    // 1. Si on clique sur le morceau déjà en cours -> Pause
     if (playingId === track.id) {
-      audioRef.current?.pause();
+      if (audioRef.current) audioRef.current.pause();
       setPlayingId(null);
       return;
     }
 
-    if (audioRef.current) {
+    // 2. Initialisation ou nettoyage de l'instance Audio unique
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    } else {
       audioRef.current.pause();
+      audioRef.current.src = ""; // Libère proprement l'ancien flux de requêtes
     }
 
-    const url = `${AUDIO_BASE}${track.filePath.replace(/\\/g, '/')}`;
-    const audio = new Audio(url);
-    audioRef.current = audio;
-    audio.play().catch(() => setStatusMsg('Impossible de lire ce fichier.'));
-    audio.onended = () => setPlayingId(null);
-    setPlayingId(track.id);
-  };
+    try {
+      // Utilisation du stream API robuste pour éviter les soucis de nom de fichier (caractères spéciaux, espaces...)
+      // et gérer nativement le Range-Streaming pour le lecteur audio.
+      const finalUrl = `${STREAM_URL}/${track.id}`;
 
+      console.log("Tentative de lecture de l'URL via stream API :", finalUrl);
+
+      audioRef.current.src = finalUrl;
+      audioRef.current.load();
+
+      audioRef.current.play()
+        .then(() => {
+          setPlayingId(track.id);
+        })
+        .catch((err) => {
+          console.error("Erreur de lecture rencontrée :", err);
+          setStatusMsg("Impossible de lire ce fichier (Vérifiez le format ou l'accès).");
+          setPlayingId(null);
+        });
+
+      audioRef.current.onended = () => {
+        setPlayingId(null);
+      };
+
+    } catch (e) {
+      console.error(e);
+      setStatusMsg('Erreur lors du chargement du lecteur.');
+    }
+  };
   // ── Sidebar ────────────────────────────────────────────
   const openAdd = () => {
     setEditingId(null);
@@ -240,7 +266,7 @@ export const Mp3Crud: React.FC = () => {
       <header style={s.toolbar}>
         <div style={s.toolbarLeft}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
           </svg>
           <span style={s.toolbarTitle}>Bibliothèque MP3</span>
           <span style={s.trackCount}>{filteredTracks.length}/{tracks.length} morceau{tracks.length !== 1 ? 'x' : ''}</span>
@@ -252,15 +278,15 @@ export const Mp3Crud: React.FC = () => {
             title="Filtres"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+              <line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="11" y1="18" x2="13" y2="18" />
             </svg>
             Filtres{hasActiveFilters ? ` (${[filterTitle, filterArtist, filterAlbum, filterGenre].filter(Boolean).length})` : ''}
           </button>
           <button style={s.addBtn} onClick={sidebarOpen ? closeSidebar : openAdd}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               {sidebarOpen
-                ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
-                : <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>}
+                ? <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>
+                : <><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></>}
             </svg>
             {sidebarOpen ? 'Fermer' : 'Ajouter'}
           </button>
@@ -356,7 +382,7 @@ export const Mp3Crud: React.FC = () => {
                 onDrop={handleFileDrop}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
                 <span style={s.dropLabel}>{fileName || 'Déposer un fichier MP3'}</span>
                 <input ref={fileInputRef} type="file" accept="audio/mp3,audio/mpeg" style={{ display: 'none' }} onChange={handleFileChange} />
@@ -405,8 +431,8 @@ export const Mp3Crud: React.FC = () => {
                 <tr>
                   <td colSpan={9} style={s.empty}>
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" style={{ display: 'block', margin: '0 auto 8px', opacity: 0.3 }}>
-                      <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-                      <line x1="2" y1="2" x2="22" y2="22" strokeWidth="1.5"/>
+                      <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                      <line x1="2" y1="2" x2="22" y2="22" strokeWidth="1.5" />
                     </svg>
                     {hasActiveFilters ? 'Aucun résultat pour ces filtres' : 'Aucun fichier MP3'}
                   </td>
@@ -423,8 +449,8 @@ export const Mp3Crud: React.FC = () => {
                           onClick={() => handlePlay(t)}
                         >
                           {playingId === t.id
-                            ? <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                            : <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            ? <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                            : <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                           }
                         </button>
                       ) : (
@@ -443,14 +469,14 @@ export const Mp3Crud: React.FC = () => {
                     <td style={{ ...s.td, ...s.tdActions }}>
                       <button style={s.iconBtn} title="Modifier" onClick={() => openEdit(t)}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                         </svg>
                       </button>
                       <button style={{ ...s.iconBtn, ...s.iconBtnDel }} title="Supprimer" onClick={() => handleDelete(t.id)}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                          <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                          <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                          <path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
                         </svg>
                       </button>
                     </td>
@@ -495,6 +521,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 13,
     backgroundColor: '#0d0d0d',
     color: '#e8e6e1',
+    boxSizing: 'border-box', // Sécurise les calculs de taille globaux
   },
   toolbar: {
     display: 'flex',
@@ -539,7 +566,6 @@ const s: Record<string, React.CSSProperties> = {
     color: '#8cb4ff',
     background: 'rgba(140,180,255,0.06)',
   },
-  // Filter bar
   filterBar: {
     display: 'flex',
     alignItems: 'center',
@@ -548,7 +574,7 @@ const s: Record<string, React.CSSProperties> = {
     borderBottom: '0.5px solid rgba(255,255,255,0.06)',
     backgroundColor: '#0f0f0f',
     flexShrink: 0,
-    flexWrap: 'wrap' as const,
+    flexWrap: 'wrap',
   },
   filterInput: {
     fontSize: 12,
@@ -559,6 +585,7 @@ const s: Record<string, React.CSSProperties> = {
     color: '#e8e6e1',
     outline: 'none',
     width: 140,
+    boxSizing: 'border-box',
   },
   clearBtn: {
     fontSize: 12,
@@ -584,6 +611,7 @@ const s: Record<string, React.CSSProperties> = {
     gap: 12,
     overflowY: 'auto',
     backgroundColor: '#111',
+    boxSizing: 'border-box',
   },
   sidebarHeading: {
     fontSize: 12,
@@ -593,7 +621,6 @@ const s: Record<string, React.CSSProperties> = {
     letterSpacing: '0.06em',
     marginBottom: 2,
   },
-  // Metadata toggle
   toggleRow: {
     display: 'flex',
     flexDirection: 'column',
@@ -652,6 +679,7 @@ const s: Record<string, React.CSSProperties> = {
     color: '#e8e6e1',
     outline: 'none',
     width: '100%',
+    boxSizing: 'border-box', // Évite le débordement de l'input dans la sidebar
   },
   dropZone: {
     border: '0.5px dashed rgba(255,255,255,0.12)',
@@ -754,7 +782,8 @@ const s: Record<string, React.CSSProperties> = {
   tdMuted: {
     color: '#555',
   },
-  tdActions: {
+  // Corrigé : Appliqué sur un conteneur div interne au lieu du <td>
+  actionsContainer: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
@@ -769,7 +798,6 @@ const s: Record<string, React.CSSProperties> = {
     color: '#888',
     border: '0.5px solid rgba(255,255,255,0.07)',
   },
-  // Play button
   playBtn: {
     width: 24,
     height: 24,
