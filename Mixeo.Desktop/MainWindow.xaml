@@ -1,59 +1,293 @@
 ﻿<Window x:Class="Mixeo.Desktop.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Mixeo" Height="600" Width="900">
+        Title="Mixeo"
+        Height="650"
+        Width="1100"
+        Background="#121212"
+        WindowStartupLocation="CenterScreen">
 
-    <Grid Margin="10">
+    <Window.Resources>
+
+        <!-- BUTTON -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#1DB954"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="14"/>
+
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="10">
+
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+
+                        </Border>
+
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+
+            <Style.Triggers>
+
+                <Trigger Property="IsMouseOver"
+                         Value="True">
+
+                    <Setter Property="Background"
+                            Value="#1ED760"/>
+
+                </Trigger>
+
+            </Style.Triggers>
+
+        </Style>
+
+
+        <!-- TEXT -->
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground"
+                    Value="White"/>
+        </Style>
+
+
+        <!-- DATAGRID -->
+        <Style TargetType="DataGrid">
+
+            <Setter Property="Background"
+                    Value="#181818"/>
+
+            <Setter Property="Foreground"
+                    Value="White"/>
+
+            <Setter Property="BorderThickness"
+                    Value="0"/>
+
+            <Setter Property="GridLinesVisibility"
+                    Value="None"/>
+
+            <Setter Property="RowBackground"
+                    Value="#181818"/>
+
+            <Setter Property="AlternatingRowBackground"
+                    Value="#202020"/>
+
+        </Style>
+
+
+        <!-- HEADER -->
+        <Style TargetType="DataGridColumnHeader">
+
+            <Setter Property="Background"
+                    Value="#1DB954"/>
+
+            <Setter Property="Foreground"
+                    Value="White"/>
+
+            <Setter Property="FontWeight"
+                    Value="Bold"/>
+
+            <Setter Property="Height"
+                    Value="45"/>
+
+            <Setter Property="BorderThickness"
+                    Value="0"/>
+
+            <Setter Property="HorizontalContentAlignment"
+                    Value="Center"/>
+
+        </Style>
+
+
+        <!-- ROW -->
+        <Style TargetType="DataGridRow">
+
+            <Setter Property="Foreground"
+                    Value="White"/>
+
+            <Setter Property="Height"
+                    Value="40"/>
+
+            <Style.Triggers>
+
+                <Trigger Property="IsMouseOver"
+                         Value="True">
+
+                    <Setter Property="Background"
+                            Value="#252525"/>
+
+                </Trigger>
+
+                <Trigger Property="IsSelected"
+                         Value="True">
+
+                    <Setter Property="Background"
+                            Value="#1DB954"/>
+
+                </Trigger>
+
+            </Style.Triggers>
+
+        </Style>
+
+
+        <!-- CELL -->
+        <Style TargetType="DataGridCell">
+
+            <Setter Property="Padding"
+                    Value="10"/>
+
+            <Setter Property="Foreground"
+                    Value="White"/>
+
+            <Setter Property="BorderThickness"
+                    Value="0"/>
+
+        </Style>
+
+    </Window.Resources>
+
+
+
+    <Grid Margin="20">
 
         <Grid.RowDefinitions>
+
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
             <RowDefinition Height="*"/>
+
         </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal">
-            <Button Content="Choisir dossier"
-                    Click="SelectFolder_Click"
-                    Width="150"/>
 
-            <TextBlock Name="FolderText"
-                       Margin="10,0,0,0"
-                       VerticalAlignment="Center"/>
-        </StackPanel>
+        <!-- HEADER -->
+        <Border
+            Background="#181818"
+            CornerRadius="16"
+            Padding="18">
 
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="1*"/>
-            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal">
 
-            <!-- LISTE MP3 -->
-            <DataGrid Name="Mp3Grid"
-                      AutoGenerateColumns="True"
-                      SelectionChanged="Mp3Grid_SelectionChanged"/>
+                <Button
+                    Name="SelectButton"
+                    Content="Choisir dossier"
+                    Width="180"
+                    Height="45"
+                    Click="SelectFolder_Click"/>
 
-            <!-- DETAILS -->
-            <StackPanel Grid.Column="1" Margin="10">
-                <TextBlock Text="METADATA" FontWeight="Bold"/>
+                <TextBlock
+                    Name="FolderText"
+                    Margin="20,0,0,0"
+                    VerticalAlignment="Center"
+                    FontSize="15"
+                    Foreground="#AAAAAA"/>
 
-                <TextBlock Text="Title:"/>
-                <TextBlock Name="TitleText"/>
-
-                <TextBlock Text="Album:"/>
-                <TextBlock Name="AlbumText"/>
-
-                <TextBlock Text="Artist:"/>
-                <TextBlock Name="ArtistText"/>
-
-                <TextBlock Text="Genre:"/>
-                <TextBlock Name="GenreText"/>
-
-                <TextBlock Text="Year:"/>
-                <TextBlock Name="YearText"/>
-
-                <TextBlock Text="Duration:"/>
-                <TextBlock Name="DurationText"/>
             </StackPanel>
 
+        </Border>
+
+
+
+        <!-- CONTENU -->
+        <Grid Grid.Row="2">
+
+            <Grid.ColumnDefinitions>
+
+                <ColumnDefinition Width="3*"/>
+
+                <ColumnDefinition Width="340"/>
+
+            </Grid.ColumnDefinitions>
+
+
+
+            <!-- TABLE -->
+            <Border
+                Background="#181818"
+                CornerRadius="18"
+                Padding="15">
+
+                <DataGrid
+                    Name="Mp3Grid"
+                    AutoGenerateColumns="True"
+                    SelectionChanged="Mp3Grid_SelectionChanged"
+                    Background="Transparent"
+                    HeadersVisibility="Column"/>
+
+            </Border>
+
+
+
+            <!-- DETAILS -->
+            <Border
+                Grid.Column="1"
+                Margin="20,0,0,0"
+                Background="#181818"
+                CornerRadius="18"
+                Padding="20">
+
+                <StackPanel>
+
+                    <TextBlock
+                        Text="Mixeo"
+                        FontSize="30"
+                        FontWeight="Bold"
+                        Foreground="#1DB954"
+                        Margin="0,0,0,20"/>
+
+                    <Separator Margin="0,0,0,20"/>
+
+
+                    <TextBlock Text="TITLE" Foreground="#777"/>
+                    <TextBlock Name="TitleText"
+                               FontSize="16"
+                               Margin="0,5,0,15"/>
+
+
+                    <TextBlock Text="ALBUM" Foreground="#777"/>
+                    <TextBlock Name="AlbumText"
+                               FontSize="16"
+                               Margin="0,5,0,15"/>
+
+
+                    <TextBlock Text="ARTIST" Foreground="#777"/>
+                    <TextBlock Name="ArtistText"
+                               FontSize="16"
+                               Margin="0,5,0,15"/>
+
+
+                    <TextBlock Text="GENRE" Foreground="#777"/>
+                    <TextBlock Name="GenreText"
+                               FontSize="16"
+                               Margin="0,5,0,15"/>
+
+
+                    <TextBlock Text="YEAR" Foreground="#777"/>
+                    <TextBlock Name="YearText"
+                               FontSize="16"
+                               Margin="0,5,0,15"/>
+
+
+                    <TextBlock Text="DURATION"
+                               Foreground="#777"/>
+
+                    <TextBlock
+                        Name="DurationText"
+                        FontSize="16"/>
+
+                </StackPanel>
+
+            </Border>
+
         </Grid>
+
     </Grid>
+
 </Window>

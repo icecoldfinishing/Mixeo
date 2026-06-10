@@ -24,7 +24,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        timer.Interval = TimeSpan.FromMinutes(5);
+        timer.Interval = TimeSpan.FromMinutes(1);
         timer.Tick += ScanFolder;
 
         // Start Program 2 as a background worker
