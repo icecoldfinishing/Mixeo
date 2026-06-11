@@ -68,9 +68,9 @@ public partial class MainWindow : Window
                 {
                     try
                     {
-                        FileLogger.Log("program1", $"Publishing file path to RabbitMQ: {file.AbsolutePath}");
+                        FileLogger.Log("Program1", $"[RABBITMQ] Requesting publish for file path: {file.AbsolutePath}");
                         await RabbitPublisher.PublishMessageAsync(RabbitConfig.QueueFiles, file.AbsolutePath);
-                        FileLogger.Log("program1", $"Successfully published: {file.AbsolutePath}");
+                        FileLogger.Log("Program1", $"[RABBITMQ] Successfully requested publish for: {file.AbsolutePath}");
                     }
                     catch (Exception ex)
                     {
@@ -111,7 +111,7 @@ public partial class MainWindow : Window
                 consumer.ReceivedAsync += async (sender, e) =>
                 {
                     var path = Encoding.UTF8.GetString(e.Body.ToArray());
-                    FileLogger.Log("program2", $"Received file path from queue: {path}");
+                    FileLogger.Log("Program2", $"[RABBITMQ] Consume from queue: {path}");
 
                     if (File.Exists(path))
                     {
@@ -121,19 +121,20 @@ public partial class MainWindow : Window
                             FileLogger.Log("program2", $"Extracted metadata for: {path} (Title: '{meta.Title}', Artist: '{meta.Artist}')");
 
                             await RabbitPublisher.PublishJsonAsync(RabbitConfig.QueueMetadata, meta);
-                            FileLogger.Log("program2", $"Published metadata to {RabbitConfig.QueueMetadata} queue for: {path}");
+                            FileLogger.Log("Program2", $"[RABBITMQ] Publish metadata to {RabbitConfig.QueueMetadata} for: {path}");
 
+                            FileLogger.Log("Program2", $"[RABBITMQ] ACK message for: {path}");
                             await channel.BasicAckAsync(e.DeliveryTag, multiple: false);
                         }
                         catch (Exception ex)
                         {
-                            FileLogger.Log("program2", $"Error processing file {path}: {ex.Message}");
+                            FileLogger.Log("Program2", $"[RABBITMQ] NACK message for {path}: Error processing - {ex.Message}");
                             await channel.BasicNackAsync(e.DeliveryTag, multiple: false, requeue: false);
                         }
                     }
                     else
                     {
-                        FileLogger.Log("program2", $"File not found: {path}. Skipping and acknowledging.");
+                        FileLogger.Log("Program2", $"[RABBITMQ] ACK message (File not found, skipping): {path}");
                         await channel.BasicAckAsync(e.DeliveryTag, multiple: false);
                     }
                 };

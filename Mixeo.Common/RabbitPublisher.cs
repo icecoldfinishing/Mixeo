@@ -19,12 +19,21 @@ public static class RabbitPublisher
             autoDelete: false
         );
 
-        var body = Encoding.UTF8.GetBytes(message);
-        await channel.BasicPublishAsync(
-            exchange: string.Empty,
-            routingKey: queueName,
-            body: body
-        );
+        try
+        {
+            var body = Encoding.UTF8.GetBytes(message);
+            await channel.BasicPublishAsync(
+                exchange: string.Empty,
+                routingKey: queueName,
+                body: body
+            );
+            FileLogger.Log("RabbitMQ", $"[RABBITMQ] Publish to '{queueName}': {message}");
+        }
+        catch (Exception ex)
+        {
+            FileLogger.Log("RabbitMQ", $"[RABBITMQ] Error publishing to '{queueName}': {ex.Message}");
+            throw;
+        }
     }
 
     public static async Task PublishJsonAsync<T>(string queueName, T obj)

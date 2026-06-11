@@ -5,17 +5,36 @@ namespace Mixeo.Common;
 
 public static class FileLogger
 {
-    private static readonly string LogDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+    private static readonly string LogDir = GetSharedLogDir();
+    private static readonly string LogFile = Path.Combine(LogDir, "mixeo-app.log");
+    private static readonly object _lock = new object();
 
-    public static void Log(string programName, string message)
+    private static string GetSharedLogDir()
+    {
+        string? dir = AppDomain.CurrentDomain.BaseDirectory;
+        while (dir != null)
+        {
+            if (Directory.Exists(Path.Combine(dir, "Mixeo.Common")))
+            {
+                return Path.Combine(dir, "logs");
+            }
+            dir = Directory.GetParent(dir)?.FullName;
+        }
+        return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+    }
+
+    public static void Log(string module, string message)
     {
         try
         {
-            Directory.CreateDirectory(LogDir);
-            string logPath = Path.Combine(LogDir, $"{programName}.log");
-            string logLine = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}";
-            File.AppendAllText(logPath, logLine);
-            System.Diagnostics.Debug.WriteLine(logLine);
+            lock (_lock)
+            {
+                Directory.CreateDirectory(LogDir);
+                string logLine = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{module}] {message}{Environment.NewLine}";
+                File.AppendAllText(LogFile, logLine);
+                System.Diagnostics.Debug.WriteLine(logLine);
+                Console.Write(logLine); // Added for console visibility where applicable
+            }
         }
         catch (Exception ex)
         {

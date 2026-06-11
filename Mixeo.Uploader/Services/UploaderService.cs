@@ -38,12 +38,13 @@ public class UploaderService
 
                 if (meta == null)
                 {
-                    FileLogger.Log(ProgramName, "Received invalid message (null metadata).");
+                    FileLogger.Log(ProgramName, "[RABBITMQ] Consume error: Received invalid message (null metadata).");
+                    FileLogger.Log(ProgramName, "[RABBITMQ] ACK message for invalid message.");
                     await channel.BasicAckAsync(e.DeliveryTag, false);
                     return;
                 }
 
-                FileLogger.Log(ProgramName, $"Received metadata for: {meta.Title} (File: {meta.Path})");
+                FileLogger.Log(ProgramName, $"[RABBITMQ] Consume metadata for: {meta.Title} (File: {meta.Path})");
                 Console.WriteLine($"📦 Received: {meta.Title}");
 
                 bool ok = await UploadToApi(meta);
@@ -78,6 +79,7 @@ public class UploaderService
                     Console.WriteLine($"❌ Upload failed: {meta.Title}");
                 }
 
+                FileLogger.Log(ProgramName, $"[RABBITMQ] ACK message for: {meta.Title}");
                 await channel.BasicAckAsync(e.DeliveryTag, false);
             };
 
