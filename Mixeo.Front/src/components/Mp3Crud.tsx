@@ -284,8 +284,12 @@ export const Mp3Crud: React.FC = () => {
       {/* Toolbar */}
       <header style={s.toolbar}>
         <div style={s.toolbarLeft}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e8e6e1" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="2" y1="6" x2="14" y2="6" />
+            <line x1="2" y1="12" x2="14" y2="12" />
+            <line x1="2" y1="18" x2="10" y2="18" />
+            <path d="M17 18V7l4 1" />
+            <circle cx="15" cy="18" r="2" />
           </svg>
           <span style={s.toolbarTitle}>Bibliothèque MP3</span>
           <span style={s.trackCount}>{filteredTracks.length}/{tracks.length} morceau{tracks.length !== 1 ? 'x' : ''}</span>
