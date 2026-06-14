@@ -10,10 +10,12 @@ namespace Mixeo.Api.Controllers;
 public class Mp3Controller : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly Mixeo.Api.Services.LyricsService _lyricsService;
 
-    public Mp3Controller(AppDbContext db)
+    public Mp3Controller(AppDbContext db, Mixeo.Api.Services.LyricsService lyricsService)
     {
         _db = db;
+        _lyricsService = lyricsService;
     }
 
     // 1. UPLOAD (Celui que nous avons validé ensemble)
@@ -26,6 +28,7 @@ public class Mp3Controller : ControllerBase
         [FromForm] string? language,
         [FromForm] int? year,
         [FromForm] int? duration,
+        [FromForm] bool useMetadata,
         [FromForm] IFormFile? file)
     {
         string? filePath = null;
@@ -39,6 +42,24 @@ public class Mp3Controller : ControllerBase
 
             using var stream = new FileStream(filePath, FileMode.Create);
             await file.CopyToAsync(stream);
+        }
+
+        if (useMetadata && !string.IsNullOrEmpty(filePath))
+        {
+            try
+            {
+                var tfile = TagLib.File.Create(filePath);
+                title = string.IsNullOrWhiteSpace(tfile.Tag.Title) ? title : tfile.Tag.Title;
+                artist = string.IsNullOrWhiteSpace(tfile.Tag.FirstPerformer) ? artist : tfile.Tag.FirstPerformer;
+                album = string.IsNullOrWhiteSpace(tfile.Tag.Album) ? album : tfile.Tag.Album;
+                genre = string.IsNullOrWhiteSpace(tfile.Tag.FirstGenre) ? genre : tfile.Tag.FirstGenre;
+                year = tfile.Tag.Year > 0 ? (int)tfile.Tag.Year : year;
+                duration = tfile.Properties.Duration.TotalSeconds > 0 ? (int)tfile.Properties.Duration.TotalSeconds : duration;
+            }
+            catch
+            {
+                // Ignore errors if TagLib fails to read the file
+            }
         }
 
         var mp3 = new Mp3File
@@ -109,5 +130,21 @@ public class Mp3Controller : ControllerBase
         _db.Mp3Files.Remove(mp3);
         await _db.SaveChangesAsync();
         return Ok(new { message = "File deleted successfully" });
+    }
+
+    // 6. GET LYRICS
+    [HttpGet("{id}/lyrics")]
+    public async Task<IActionResult> GetLyrics(int id)
+    {
+        var mp3 = await _db.Mp3Files.FindAsync(id);
+        if (mp3 == null) return NotFound("Chanson introuvable.");
+
+        var lyrics = await _lyricsService.GetOrDownloadLyricsAsync(mp3);
+        if (string.IsNullOrEmpty(lyrics))
+        {
+            return NotFound("Paroles indisponibles.");
+        }
+
+        return Ok(new { text = lyrics });
     }
 }

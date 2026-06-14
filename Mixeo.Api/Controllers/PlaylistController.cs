@@ -23,70 +23,108 @@ public class PlaylistController : ControllerBase
     {
         var query = _db.Mp3Files.AsQueryable();
 
-        // 1. Genres autorisés (OR match between any of the criteria.Genres)
-        if (criteria.Genres != null && criteria.Genres.Any())
-        {
-            var genresLower = criteria.Genres.Select(g => g.ToLower()).ToList();
-            query = query.Where(m => m.Genre != null && genresLower.Any(g => m.Genre.ToLower().Contains(g)));
-        }
-
-        // 2. Langues autorisées (OR match)
-        if (criteria.Languages != null && criteria.Languages.Any())
-        {
-            var langsLower = criteria.Languages.Select(l => l.ToLower()).ToList();
-            query = query.Where(m => m.Language != null && langsLower.Any(l => m.Language.ToLower().Contains(l)));
-        }
-
-        // 3. Artistes autorisés (OR match)
-        if (criteria.Artists != null && criteria.Artists.Any())
-        {
-            var artistsLower = criteria.Artists.Select(a => a.ToLower()).ToList();
-            query = query.Where(m => m.Artist != null && artistsLower.Any(a => m.Artist.ToLower().Contains(a)));
-        }
-
-        // 4. Genres à exclure
+        // -------------------------------------------------------------
+        // PRIORITÉ 1 : LES EXCLUSIONS (Nettoyage de base)
+        // -------------------------------------------------------------
         if (criteria.ExcludeGenres != null && criteria.ExcludeGenres.Any())
         {
             var exclGenresLower = criteria.ExcludeGenres.Select(g => g.ToLower()).ToList();
-            query = query.Where(m => m.Genre == null || !exclGenresLower.Any(g => m.Genre.ToLower().Contains(g)));
+            query = query.Where(m => m.Genre == null || !exclGenresLower.Contains(m.Genre.ToLower()));
         }
 
-        // 5. Artistes à exclure
         if (criteria.ExcludeArtists != null && criteria.ExcludeArtists.Any())
         {
             var exclArtistsLower = criteria.ExcludeArtists.Select(a => a.ToLower()).ToList();
-            query = query.Where(m => m.Artist == null || !exclArtistsLower.Any(a => m.Artist.ToLower().Contains(a)));
+            query = query.Where(m => m.Artist == null || !exclArtistsLower.Contains(m.Artist.ToLower()));
         }
 
+        // -------------------------------------------------------------
+        // PRIORITÉ 2 : LES INCLUSIONS CIBLÉES
+        // -------------------------------------------------------------
+        bool hasInclusions = false;
+        var inclusionQuery = _db.Mp3Files.AsQueryable(); // Requête secondaire pour le comportement optionnel
+
+        // 3. Langues autorisées
+        if (criteria.Languages != null && criteria.Languages.Any())
+        {
+            hasInclusions = true;
+            var langsLower = criteria.Languages.Select(l => l.ToLower()).ToList();
+            query = query.Where(m => m.Language != null && langsLower.Contains(m.Language.ToLower()));
+        }
+
+        // 4. Genres autorisés
+        if (criteria.Genres != null && criteria.Genres.Any())
+        {
+            hasInclusions = true;
+            var genresLower = criteria.Genres.Select(g => g.ToLower()).ToList();
+            query = query.Where(m => m.Genre != null && genresLower.Contains(m.Genre.ToLower()));
+        }
+
+        // 5. Artistes autorisés
+        if (criteria.Artists != null && criteria.Artists.Any())
+        {
+            hasInclusions = true;
+            var artistsLower = criteria.Artists.Select(a => a.ToLower()).ToList();
+            query = query.Where(m => m.Artist != null && artistsLower.Contains(m.Artist.ToLower()));
+        }
+
+        // Exécution de la requête filtrée
         var availableTracks = await query.ToListAsync();
 
-        // Algorithme de sélection par rapport à la durée totale demandée
-        var selectedTracks = new List<Mp3File>();
-        int currentDuration = 0;
+        // Sécurité : Si l'utilisateur a demandé des critères spécifiques mais qu'aucun morceau ne correspond,
+        // on évite de renvoyer une liste vide en récupérant un échantillon global (sans les exclusions)
+        if (!availableTracks.Any() && hasInclusions)
+        {
+            // On réapplique uniquement les exclusions sur la base complète
+            if (criteria.ExcludeGenres != null && criteria.ExcludeGenres.Any())
+            {
+                var exclGenresLower = criteria.ExcludeGenres.Select(g => g.ToLower()).ToList();
+                inclusionQuery = inclusionQuery.Where(m => m.Genre == null || !exclGenresLower.Contains(m.Genre.ToLower()));
+            }
+            if (criteria.ExcludeArtists != null && criteria.ExcludeArtists.Any())
+            {
+                var exclArtistsLower = criteria.ExcludeArtists.Select(a => a.ToLower()).ToList();
+                inclusionQuery = inclusionQuery.Where(m => m.Artist == null || !exclArtistsLower.Contains(m.Artist.ToLower()));
+            }
+            availableTracks = await inclusionQuery.ToListAsync();
+        }
 
-        // On mélange aléatoirement les pistes disponibles
+        // -------------------------------------------------------------
+        // PRIORITÉ 3 : LA RANDOMISATION (Mélange)
+        // -------------------------------------------------------------
         var rng = new Random();
         availableTracks = availableTracks.OrderBy(_ => rng.Next()).ToList();
+
+        // -------------------------------------------------------------
+        // PRIORITÉ 4 : CONTRÔLE DE LA DURÉE MAX (TotalDuration)
+        // -------------------------------------------------------------
+        var selectedTracks = new List<Mp3File>();
+        int currentDuration = 0;
 
         foreach (var track in availableTracks)
         {
             int trackDuration = track.Duration ?? 0;
+            
+            // On ajoute le morceau uniquement s'il respecte le temps restant imparti
             if (currentDuration + trackDuration <= criteria.TotalDuration)
             {
                 selectedTracks.Add(track);
                 currentDuration += trackDuration;
             }
-            else if (selectedTracks.Count == 0)
-            {
-                selectedTracks.Add(track);
-                currentDuration += trackDuration;
-                break;
-            }
+        }
+
+        // Si la liste reste vide après la boucle stricte (ex: la durée max demandée est trop faible),
+        // on ajoute par défaut l'unique premier morceau pour ne pas casser l'affichage client.
+        if (!selectedTracks.Any() && availableTracks.Any())
+        {
+            var fallbackTrack = availableTracks.First();
+            selectedTracks.Add(fallbackTrack);
+            currentDuration = fallbackTrack.Duration ?? 0;
         }
 
         return Ok(new { tracks = selectedTracks, totalDuration = currentDuration });
     }
-
+    
     // 2. SAUVEGARDE DE LA PLAYLIST APPRÉCIÉE ET MODIFIÉE
     [HttpPost("save")]
     public async Task<IActionResult> SavePlaylist([FromBody] SavePlaylistDto dto)

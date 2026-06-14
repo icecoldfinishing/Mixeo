@@ -34,6 +34,9 @@ public class Mp3File
     [Column("file_path")]
     public string? FilePath { get; set; }
 
+    [Column("lyrics")]
+    public string? Lyrics { get; set; }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; }
 }

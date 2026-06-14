@@ -25,6 +25,7 @@ CREATE TABLE mp3_files (
     duration INT,
 
     file_path TEXT UNIQUE,
+    lyrics TEXT,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
