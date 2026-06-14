@@ -45,6 +45,9 @@ export const Mp3Crud: React.FC = () => {
   const [playingId, setPlayingId] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Lyrics Modal
+  const [lyricsModal, setLyricsModal] = useState({ open: false, trackId: null as number | null, title: '', text: '', loading: false });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { fetchTracks(); }, []);
@@ -232,6 +235,22 @@ export const Mp3Crud: React.FC = () => {
         fetchTracks();
       }
     } catch { setStatusMsg('Erreur lors de la suppression.'); }
+  };
+
+  const handleViewLyrics = async (track: Mp3File) => {
+    if (!track.id) return;
+    setLyricsModal({ open: true, trackId: track.id, title: track.title || 'Paroles', text: '', loading: true });
+    try {
+      const res = await fetch(`${API_URL}/${track.id}/lyrics`);
+      if (res.ok) {
+        const data = await res.json();
+        setLyricsModal(prev => ({ ...prev, text: data.text, loading: false }));
+      } else {
+        setLyricsModal(prev => ({ ...prev, text: 'Paroles indisponibles.', loading: false }));
+      }
+    } catch {
+      setLyricsModal(prev => ({ ...prev, text: 'Erreur réseau.', loading: false }));
+    }
   };
 
   const handleFileDrop = (e: React.DragEvent) => {
@@ -467,6 +486,11 @@ export const Mp3Crud: React.FC = () => {
                     <td style={{ ...s.td, ...s.tdMuted }}>{t.year || '—'}</td>
                     <td style={{ ...s.td, ...s.tdMuted }}>{fmtDuration(t.duration)}</td>
                     <td style={{ ...s.td, ...s.tdActions }}>
+                      <button style={s.iconBtn} title="Paroles" onClick={() => handleViewLyrics(t)}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                      </button>
                       <button style={s.iconBtn} title="Modifier" onClick={() => openEdit(t)}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -490,6 +514,27 @@ export const Mp3Crud: React.FC = () => {
 
       {/* Status bar */}
       <div style={s.statusBar}>{status}</div>
+
+      {/* Lyrics Modal */}
+      {lyricsModal.open && (
+        <div style={s.modalOverlay}>
+          <div style={s.modalContent}>
+            <div style={s.modalHeader}>
+              <h3 style={{ margin: 0, fontSize: 15 }}>Paroles : {lyricsModal.title}</h3>
+              <button onClick={() => setLyricsModal({ ...lyricsModal, open: false })} style={s.closeModalBtn}>✕</button>
+            </div>
+            <div style={s.modalScrollContainer}>
+              {lyricsModal.loading ? (
+                <p style={{ textAlign: 'center', padding: 20, color: '#888' }}>Recherche des paroles en cours...</p>
+              ) : (
+                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: '#ddd' }}>
+                  {lyricsModal.text}
+                </pre>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -797,6 +842,69 @@ const s: Record<string, React.CSSProperties> = {
     background: 'rgba(255,255,255,0.05)',
     color: '#888',
     border: '0.5px solid rgba(255,255,255,0.07)',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+  },
+  modalContent: {
+    backgroundColor: '#151515',
+    border: '0.5px solid rgba(255,255,255,0.1)',
+    borderRadius: 10,
+    width: 500,
+    maxWidth: '90%',
+    maxHeight: '80vh',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+  },
+  modalHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '16px 20px',
+    borderBottom: '0.5px solid rgba(255,255,255,0.06)',
+  },
+  closeModalBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: '#888',
+    cursor: 'pointer',
+    fontSize: 16,
+    padding: 4,
+  },
+  modalScrollContainer: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: 20,
+  },
+  iconBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: '#888',
+    cursor: 'pointer',
+    padding: 4,
+  },
+  iconBtnDel: {
+    color: '#a55',
+  },
+  statusBar: {
+    position: 'fixed',
+    bottom: 20,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: '#333',
+    color: '#fff',
+    padding: '8px 16px',
+    borderRadius: 20,
+    opacity: 0.9,
+    pointerEvents: 'none',
+    zIndex: 200,
   },
   playBtn: {
     width: 24,

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
 using Mixeo.Api.Data;
+using Mixeo.Api.Services;
 using Microsoft.Extensions.FileProviders; // Requis pour PhysicalFileProvider
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +16,9 @@ builder.Services.AddControllers()
 // Configuration de la connexion PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql("Host=localhost;Database=pg4;Username=postgres;Password=postgres"));
+
+// Services
+builder.Services.AddScoped<LyricsService>();
 
 // Configuration du CORS pour que ton Front React puisse interroger l'API sans blocage
 builder.Services.AddCors(options =>

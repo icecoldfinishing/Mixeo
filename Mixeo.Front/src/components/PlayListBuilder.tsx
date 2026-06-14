@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaPlay, FaPause, FaTrash, FaSyncAlt } from "react-icons/fa";
+import { FaPlay, FaPause, FaTrash, FaSyncAlt, FaFileAlt } from "react-icons/fa";
 import { TagInput } from './TagInput';
 import {
     type PlaylistCriteria,
@@ -113,6 +113,9 @@ export const PlaylistBuilder: React.FC = () => {
     // Status UI
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
+
+    // Lyrics Modal
+    const [lyricsModal, setLyricsModal] = useState({ open: false, trackId: null as number | null, title: '', text: '', loading: false });
 
     useEffect(() => {
         fetchSavedPlaylists();
@@ -321,6 +324,22 @@ export const PlaylistBuilder: React.FC = () => {
         if (audioRef.current) {
             audioRef.current.src = streamUrl;
             audioRef.current.play();
+        }
+    };
+
+    const handleViewLyrics = async (file: Mp3File) => {
+        if (!file.id) return;
+        setLyricsModal({ open: true, trackId: file.id, title: file.title || 'Paroles', text: '', loading: true });
+        try {
+            const res = await fetch(`${MP3_API_URL}/${file.id}/lyrics`);
+            if (res.ok) {
+                const data = await res.json();
+                setLyricsModal(prev => ({ ...prev, text: data.text, loading: false }));
+            } else {
+                setLyricsModal(prev => ({ ...prev, text: 'Paroles indisponibles.', loading: false }));
+            }
+        } catch {
+            setLyricsModal(prev => ({ ...prev, text: 'Erreur réseau.', loading: false }));
         }
     };
 
@@ -636,6 +655,13 @@ export const PlaylistBuilder: React.FC = () => {
 
                                         <div style={{ width: 100, display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                                             <button
+                                                onClick={() => handleViewLyrics(file)}
+                                                title="Voir les paroles"
+                                                style={s.iconActionBtn}
+                                            >
+                                                <FaFileAlt />
+                                            </button>
+                                            <button
                                                 onClick={() => setReplacingTrackId(file.id)}
                                                 title="Remplacer le morceau"
                                                 style={s.iconActionBtn}
@@ -800,6 +826,27 @@ export const PlaylistBuilder: React.FC = () => {
                                         </button>
                                     </div>
                                 ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Lyrics Modal */}
+            {lyricsModal.open && (
+                <div style={s.modalOverlay}>
+                    <div style={s.modalContent}>
+                        <div style={s.modalHeader}>
+                            <h3 style={{ margin: 0, fontSize: 15 }}>Paroles : {lyricsModal.title}</h3>
+                            <button onClick={() => setLyricsModal({ ...lyricsModal, open: false })} style={s.closeModalBtn}>✕</button>
+                        </div>
+                        <div style={s.modalScrollContainer}>
+                            {lyricsModal.loading ? (
+                                <p style={{ textAlign: 'center', padding: 20, color: '#888' }}>Recherche des paroles en cours...</p>
+                            ) : (
+                                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: '#ddd' }}>
+                                    {lyricsModal.text}
+                                </pre>
+                            )}
                         </div>
                     </div>
                 </div>
