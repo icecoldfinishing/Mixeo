@@ -1,10 +1,12 @@
 export interface PlaylistCriteria {
-    totalDuration: number | null;       // en secondes (envoyé à l'API)
-    genres: string[];                   // genres souhaités
-    languages: string[];                // langues souhaitées
-    artists: string[];                  // artistes souhaités
-    excludeGenres: string[];           // genres exclus
-    excludeArtists: string[];          // artistes exclus
+    totalDuration: number | null;
+    genres: string[];
+    languages: string[];
+    artists: string[];
+    albums: string[];
+    excludeGenres: string[];
+    excludeArtists: string[];
+    excludeAlbums: string[];
 }
 
 export interface PlaylistTrack {
@@ -28,8 +30,10 @@ export const EMPTY_CRITERIA: PlaylistCriteria = {
     genres: [],
     languages: [],
     artists: [],
+    albums: [],
     excludeGenres: [],
     excludeArtists: [],
+    excludeAlbums: [],
 };
 
 export const GENRE_SUGGESTIONS = [

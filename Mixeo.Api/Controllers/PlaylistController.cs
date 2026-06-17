@@ -38,6 +38,12 @@ public class PlaylistController : ControllerBase
             query = query.Where(m => m.Artist == null || !exclArtistsLower.Contains(m.Artist.ToLower()));
         }
 
+        if (criteria.ExcludeAlbums != null && criteria.ExcludeAlbums.Any())
+        {
+            var exclAlbumsLower = criteria.ExcludeAlbums.Select(a => a.ToLower()).ToList();
+            query = query.Where(m => m.Album == null || !exclAlbumsLower.Contains(m.Album.ToLower()));
+        }
+
         // -------------------------------------------------------------
         // PRIORITÉ 2 : LES INCLUSIONS CIBLÉES
         // -------------------------------------------------------------
@@ -66,6 +72,14 @@ public class PlaylistController : ControllerBase
             hasInclusions = true;
             var artistsLower = criteria.Artists.Select(a => a.ToLower()).ToList();
             query = query.Where(m => m.Artist != null && artistsLower.Contains(m.Artist.ToLower()));
+        }
+
+        // 6. Albums autorisés
+        if (criteria.Albums != null && criteria.Albums.Any())
+        {
+            hasInclusions = true;
+            var albumsLower = criteria.Albums.Select(a => a.ToLower()).ToList();
+            query = query.Where(m => m.Album != null && albumsLower.Contains(m.Album.ToLower()));
         }
 
         // Exécution de la requête filtrée

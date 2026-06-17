@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FaPlay, FaPause, FaTrash, FaSyncAlt, FaFileAlt } from "react-icons/fa";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { FaPlay, FaPause, FaTrash, FaSyncAlt, FaFileAlt, FaStepForward, FaStepBackward, FaRandom, FaVolumeUp } from "react-icons/fa";
 import { TagInput } from './TagInput';
 import {
     type PlaylistCriteria,
@@ -106,9 +106,19 @@ export const PlaylistBuilder: React.FC = () => {
     const [showAddTrackModal, setShowAddTrackModal] = useState(false);
     const [replacingTrackId, setReplacingTrackId] = useState<number | null>(null);
 
-    // Audio Player
-    const [playingMp3Id, setPlayingMp3Id] = useState<number | null>(null);
+    // Audio Player - Full Playlist Player
+    const [playerQueue, setPlayerQueue] = useState<Mp3File[]>([]);
+    const [playerIndex, setPlayerIndex] = useState<number>(-1);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isShuffle, setIsShuffle] = useState(false);
+    const [playbackRate, setPlaybackRate] = useState(1);
+    const [progress, setProgress] = useState(0);      // 0-100
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [volume, setVolume] = useState(1);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    const playingMp3Id = playerIndex >= 0 && playerQueue.length > 0 ? playerQueue[playerIndex]?.id ?? null : null;
 
     // Status UI
     const [loading, setLoading] = useState(false);
@@ -161,12 +171,14 @@ export const PlaylistBuilder: React.FC = () => {
         try {
             const payload = {
                 name: name.trim(),
-                totalDuration: criteria.totalDuration || 3600, // 1h default
+                totalDuration: criteria.totalDuration || 3600,
                 genres: criteria.genres,
                 languages: criteria.languages,
                 artists: criteria.artists,
+                albums: criteria.albums,
                 excludeArtists: criteria.excludeArtists,
-                excludeGenres: criteria.excludeGenres
+                excludeGenres: criteria.excludeGenres,
+                excludeAlbums: criteria.excludeAlbums,
             };
 
             const res = await fetch(`${API_URL}/generate`, {
@@ -204,8 +216,10 @@ export const PlaylistBuilder: React.FC = () => {
                     genres: criteria.genres,
                     languages: criteria.languages,
                     artists: criteria.artists,
+                    albums: criteria.albums,
                     excludeArtists: criteria.excludeArtists,
-                    excludeGenres: criteria.excludeGenres
+                    excludeGenres: criteria.excludeGenres,
+                    excludeAlbums: criteria.excludeAlbums,
                 }
             };
 
@@ -317,26 +331,106 @@ export const PlaylistBuilder: React.FC = () => {
         }
     };
 
-    // 7. STREAM / PLAYBACK
-    const playTrack = (trackId: number) => {
-        if (playingMp3Id === trackId) {
-            if (audioRef.current) {
-                if (audioRef.current.paused) {
-                    audioRef.current.play();
-                } else {
-                    audioRef.current.pause();
-                }
-            }
+    // 7. FULL PLAYLIST PLAYER
+    const getTrackList = useCallback((): Mp3File[] => {
+        if (activePlaylist) return (activePlaylist.tracks || []).map(t => t.mp3File!).filter(Boolean);
+        return previewTracks;
+    }, [activePlaylist, previewTracks]);
+
+    const loadTrack = useCallback((index: number, queue: Mp3File[], autoPlay = true) => {
+        if (index < 0 || index >= queue.length) return;
+        const track = queue[index];
+        setPlayerIndex(index);
+        setPlayerQueue(queue);
+        if (audioRef.current) {
+            audioRef.current.src = `${API_URL}/stream/${track.id}`;
+            audioRef.current.playbackRate = playbackRate;
+            audioRef.current.volume = volume;
+            if (autoPlay) { audioRef.current.play().catch(() => {}); setIsPlaying(true); }
+        }
+    }, [playbackRate, volume]);
+
+    const playTrack = useCallback((trackId: number) => {
+        const queue = getTrackList();
+        const idx = queue.findIndex(t => t.id === trackId);
+        if (idx === -1) return;
+        if (playerIndex === idx && playerQueue === queue) {
+            if (audioRef.current?.paused) { audioRef.current.play(); setIsPlaying(true); }
+            else { audioRef.current?.pause(); setIsPlaying(false); }
             return;
         }
+        loadTrack(idx, queue);
+    }, [getTrackList, playerIndex, playerQueue, loadTrack]);
 
-        setPlayingMp3Id(trackId);
-        const streamUrl = `${API_URL}/stream/${trackId}`;
-        if (audioRef.current) {
-            audioRef.current.src = streamUrl;
-            audioRef.current.play();
-        }
+    const playAll = (shuffle = false) => {
+        const queue = getTrackList();
+        if (!queue.length) return;
+        setIsShuffle(shuffle);
+        const shuffled = shuffle ? [...queue].sort(() => Math.random() - 0.5) : [...queue];
+        setPlayerQueue(shuffled);
+        loadTrack(0, shuffled);
     };
+
+    const playNext = useCallback(() => {
+        if (!playerQueue.length) return;
+        const nextIdx = isShuffle
+            ? Math.floor(Math.random() * playerQueue.length)
+            : (playerIndex + 1) % playerQueue.length;
+        loadTrack(nextIdx, playerQueue);
+    }, [playerQueue, playerIndex, isShuffle, loadTrack]);
+
+    const playPrev = useCallback(() => {
+        if (!playerQueue.length) return;
+        // If more than 3s played, restart current
+        if (audioRef.current && audioRef.current.currentTime > 3) {
+            audioRef.current.currentTime = 0; return;
+        }
+        const prevIdx = (playerIndex - 1 + playerQueue.length) % playerQueue.length;
+        loadTrack(prevIdx, playerQueue);
+    }, [playerQueue, playerIndex, loadTrack]);
+
+    const handleSeek = (val: number) => {
+        if (!audioRef.current || !duration) return;
+        const t = (val / 100) * duration;
+        audioRef.current.currentTime = t;
+        setCurrentTime(t);
+    };
+
+    const handleSpeedChange = (rate: number) => {
+        setPlaybackRate(rate);
+        if (audioRef.current) audioRef.current.playbackRate = rate;
+    };
+
+    const handleVolumeChange = (val: number) => {
+        setVolume(val);
+        if (audioRef.current) audioRef.current.volume = val;
+    };
+
+    // Wire up audio events
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        const onTimeUpdate = () => {
+            setCurrentTime(audio.currentTime);
+            setProgress(audio.duration ? (audio.currentTime / audio.duration) * 100 : 0);
+        };
+        const onLoaded = () => setDuration(audio.duration || 0);
+        const onEnded = () => playNext();
+        const onPlay = () => setIsPlaying(true);
+        const onPause = () => setIsPlaying(false);
+        audio.addEventListener('timeupdate', onTimeUpdate);
+        audio.addEventListener('loadedmetadata', onLoaded);
+        audio.addEventListener('ended', onEnded);
+        audio.addEventListener('play', onPlay);
+        audio.addEventListener('pause', onPause);
+        return () => {
+            audio.removeEventListener('timeupdate', onTimeUpdate);
+            audio.removeEventListener('loadedmetadata', onLoaded);
+            audio.removeEventListener('ended', onEnded);
+            audio.removeEventListener('play', onPlay);
+            audio.removeEventListener('pause', onPause);
+        };
+    }, [playNext]);
 
     const handleViewLyrics = async (file: Mp3File) => {
         if (!file.id) return;
@@ -366,8 +460,10 @@ export const PlaylistBuilder: React.FC = () => {
         criteria.genres.length,
         criteria.languages.length,
         criteria.artists.length,
+        criteria.albums.length,
         criteria.excludeGenres.length,
         criteria.excludeArtists.length,
+        criteria.excludeAlbums.length,
     ].filter(Boolean).length;
 
     return (
@@ -527,6 +623,22 @@ export const PlaylistBuilder: React.FC = () => {
                             />
                         </Section>
 
+                        <Section
+                            icon={
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+                                </svg>
+                            }
+                            title="Albums"
+                            subtitle="Inclure uniquement ces albums"
+                        >
+                            <TagInput
+                                values={criteria.albums}
+                                onChange={v => set('albums', v)}
+                                placeholder="ex: Thriller, Nevermind..."
+                            />
+                        </Section>
+
                         <div style={s.divider}>
                             <span style={{ ...s.dividerLabel, color: '#7f3030' }}>Exclure</span>
                         </div>
@@ -563,6 +675,24 @@ export const PlaylistBuilder: React.FC = () => {
                                 values={criteria.excludeArtists}
                                 onChange={v => set('excludeArtists', v)}
                                 placeholder="Artistes à bloquer..."
+                                variant="danger"
+                            />
+                        </Section>
+
+                        <Section
+                            icon={
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c87070" strokeWidth="1.75" strokeLinecap="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+                                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                                </svg>
+                            }
+                            title="Albums exclus"
+                            subtitle="Ces albums seront ignorés lors de la génération"
+                        >
+                            <TagInput
+                                values={criteria.excludeAlbums}
+                                onChange={v => set('excludeAlbums', v)}
+                                placeholder="Albums à bloquer..."
                                 variant="danger"
                             />
                         </Section>
@@ -605,14 +735,20 @@ export const PlaylistBuilder: React.FC = () => {
                                         Non sauvegardée • {previewTracks.length} musiques • {formatDuration(previewDuration)}
                                     </p>
                                 </div>
-                                <div style={{ display: 'flex', gap: 10 }}>
-                                    <button onClick={() => setShowAddTrackModal(true)} style={s.btnAccent}>
-                                        Ajouter un morceau
+                                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                    <button onClick={() => playAll(false)} style={s.btnAccent} title="Lecture dans l'ordre">
+                                        ▶ Lire tout
+                                    </button>
+                                    <button onClick={() => playAll(true)} style={{ ...s.btnAccent, background: 'rgba(255,200,0,0.1)', borderColor: 'rgba(255,200,0,0.3)', color: '#f0c040' }} title="Lecture aléatoire">
+                                        ⇄ Shuffle
+                                    </button>
+                                    <button onClick={() => setShowAddTrackModal(true)} style={s.btnSecondary}>
+                                        + Ajouter
                                     </button>
                                     <button onClick={handleSavePlaylist} style={s.btnPrimary}>
-                                        Sauvegarder la Playlist
+                                        Sauvegarder
                                     </button>
-                                    <button onClick={() => setPreviewTracks([])} style={s.btnSecondary}>
+                                    <button onClick={() => setPreviewTracks([])} style={{ ...s.btnSecondary, color: '#888' }}>
                                         Annuler
                                     </button>
                                 </div>
@@ -683,12 +819,18 @@ export const PlaylistBuilder: React.FC = () => {
                                     Sauvegardée • {activePlaylist.tracks?.length || 0} musiques • {formatDuration(activePlaylist.totalDuration)}
                                 </p>
                             </div>
-                            <div style={{ display: 'flex', gap: 10 }}>
+                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                <button onClick={() => playAll(false)} style={s.btnAccent} title="Lecture dans l'ordre">
+                                    ▶ Lire tout
+                                </button>
+                                <button onClick={() => playAll(true)} style={{ ...s.btnAccent, background: 'rgba(255,200,0,0.1)', borderColor: 'rgba(255,200,0,0.3)', color: '#f0c040' }} title="Lecture aléatoire">
+                                    ⇄ Shuffle
+                                </button>
                                 <a
                                     href={`${API_URL}/${activePlaylist.id}/download-zip`}
                                     style={s.btnPrimaryLink}
                                 >
-                                    Télécharger (ZIP + Metadata)
+                                    ↓ Télécharger ZIP
                                 </a>
                             </div>
                         </div>
@@ -906,8 +1048,106 @@ export const PlaylistBuilder: React.FC = () => {
                 </div>
             )}
 
-            {/* Persistent Audio stream anchor */}
-            <audio ref={audioRef} style={{ display: 'none' }} controls />
+            {/* Persistent hidden audio element */}
+            <audio ref={audioRef} style={{ display: 'none' }} />
+
+            {/* Floating Player Bar */}
+            {playerQueue.length > 0 && (
+                <div style={s.playerBar}>
+                    {/* Track Info */}
+                    <div style={s.playerTrackInfo}>
+                        <span style={s.playerTitle}>{playerQueue[playerIndex]?.title || 'Lecture...'}</span>
+                        <span style={s.playerArtist}>{playerQueue[playerIndex]?.artist || ''}</span>
+                    </div>
+
+                    {/* Controls */}
+                    <div style={s.playerControls}>
+                        {/* Shuffle */}
+                        <button
+                            onClick={() => setIsShuffle(v => !v)}
+                            style={{ ...s.playerBtn, color: isShuffle ? '#f0c040' : '#555' }}
+                            title="Shuffle"
+                        >
+                            <FaRandom />
+                        </button>
+
+                        {/* Prev */}
+                        <button onClick={playPrev} style={s.playerBtn} title="Précédent">
+                            <FaStepBackward />
+                        </button>
+
+                        {/* Play/Pause */}
+                        <button
+                            onClick={() => {
+                                if (!audioRef.current) return;
+                                if (isPlaying) { audioRef.current.pause(); }
+                                else { audioRef.current.play().catch(() => {}); }
+                            }}
+                            style={s.playerPlayBtn}
+                        >
+                            {isPlaying ? <FaPause /> : <FaPlay />}
+                        </button>
+
+                        {/* Next */}
+                        <button onClick={playNext} style={s.playerBtn} title="Suivant">
+                            <FaStepForward />
+                        </button>
+                    </div>
+
+                    {/* Progress */}
+                    <div style={s.playerProgress}>
+                        <span style={s.playerTime}>{formatDuration(currentTime)}</span>
+                        <input
+                            type="range" min={0} max={100} step={0.1}
+                            value={progress}
+                            onChange={e => handleSeek(Number(e.target.value))}
+                            style={s.playerSeek}
+                        />
+                        <span style={s.playerTime}>{formatDuration(duration)}</span>
+                    </div>
+
+                    {/* Speed + Volume */}
+                    <div style={s.playerRight}>
+                        {/* Speed */}
+                        <select
+                            value={playbackRate}
+                            onChange={e => handleSpeedChange(Number(e.target.value))}
+                            style={s.playerSelect}
+                            title="Vitesse"
+                        >
+                            {[0.5, 0.75, 1, 1.25, 1.5, 2].map(r => (
+                                <option key={r} value={r}>{r}x</option>
+                            ))}
+                        </select>
+
+                        {/* Volume */}
+                        <FaVolumeUp style={{ color: '#555', fontSize: 11, flexShrink: 0 }} />
+                        <input
+                            type="range" min={0} max={1} step={0.05}
+                            value={volume}
+                            onChange={e => handleVolumeChange(Number(e.target.value))}
+                            style={{ ...s.playerSeek, width: 70 }}
+                        />
+
+                        {/* Queue position */}
+                        <span style={s.playerTime}>{playerIndex + 1}/{playerQueue.length}</span>
+
+                        {/* Close player */}
+                        <button
+                            onClick={() => {
+                                audioRef.current?.pause();
+                                setPlayerQueue([]);
+                                setPlayerIndex(-1);
+                                setIsPlaying(false);
+                            }}
+                            style={{ ...s.playerBtn, color: '#555', fontSize: 12 }}
+                            title="Fermer le lecteur"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -1377,5 +1617,116 @@ const s: Record<string, React.CSSProperties> = {
         fontSize: 11,
         cursor: 'pointer',
         textDecoration: 'underline',
+    },
+
+    // ─── FLOATING PLAYER BAR ────────────────────────────────────────────────
+    playerBar: {
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 70,
+        background: 'rgba(10,10,10,0.97)',
+        borderTop: '0.5px solid rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(12px)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+        padding: '0 20px',
+        zIndex: 500,
+        boxShadow: '0 -4px 30px rgba(0,0,0,0.5)',
+    },
+    playerTrackInfo: {
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 140,
+        maxWidth: 200,
+        overflow: 'hidden',
+        flexShrink: 0,
+    },
+    playerTitle: {
+        fontSize: 12,
+        fontWeight: 600,
+        color: '#e8e6e1',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+    },
+    playerArtist: {
+        fontSize: 10,
+        color: '#666',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+    },
+    playerControls: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        flexShrink: 0,
+    },
+    playerBtn: {
+        background: 'transparent',
+        border: 'none',
+        color: '#777',
+        cursor: 'pointer',
+        fontSize: 13,
+        padding: '6px 8px',
+        borderRadius: 6,
+        display: 'flex',
+        alignItems: 'center',
+        transition: 'color 0.15s',
+    },
+    playerPlayBtn: {
+        background: '#e8e6e1',
+        border: 'none',
+        color: '#0d0d0d',
+        cursor: 'pointer',
+        fontSize: 13,
+        width: 34,
+        height: 34,
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+    },
+    playerProgress: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
+        minWidth: 120,
+    },
+    playerSeek: {
+        flex: 1,
+        height: 3,
+        appearance: 'none' as const,
+        background: 'rgba(255,255,255,0.15)',
+        borderRadius: 2,
+        cursor: 'pointer',
+        accentColor: '#e8e6e1',
+    },
+    playerTime: {
+        fontSize: 10,
+        color: '#555',
+        fontVariantNumeric: 'tabular-nums',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+    },
+    playerRight: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexShrink: 0,
+    },
+    playerSelect: {
+        background: 'transparent',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        borderRadius: 4,
+        color: '#777',
+        fontSize: 11,
+        padding: '2px 6px',
+        cursor: 'pointer',
     },
 };

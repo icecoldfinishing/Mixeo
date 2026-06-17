@@ -63,3 +63,5 @@ CREATE TABLE playlist_rules (
 
 
 select*from mp3_files;
+
+select*from playlist_tracks;
