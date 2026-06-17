@@ -85,7 +85,7 @@ const DurationPicker: React.FC<{
 
 export const PlaylistBuilder: React.FC = () => {
     // Current User
-    const [user, setUser] = useState<{ id: number; username: string } | null>(() => {
+    const [user] = useState<{ id: number; username: string } | null>(() => {
         const saved = localStorage.getItem('mixeo_user');
         return saved ? JSON.parse(saved) : null;
     });
@@ -235,20 +235,12 @@ export const PlaylistBuilder: React.FC = () => {
     };
 
     // 3. REMOVE TRACK
-    const handleRemoveTrack = async (playlistId: number, trackId: number) => {
-        try {
-            const res = await fetch(`${API_URL}/${playlistId}/remove-track`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId }),
-            });
-            if (res.ok) {
-                const updated = await res.json();
-                setActivePlaylist(updated);
-                fetchSavedPlaylists();
-            }
-        } catch (err) {
-            console.error("Error removing track", err);
+
+    const handleRemovePreviewTrack = (trackId: number) => {
+        const track = previewTracks.find(t => t.id === trackId);
+        if (track) {
+            setPreviewTracks(prev => prev.filter(t => t.id !== trackId));
+            setPreviewDuration(prev => prev - (track.duration || 0));
         }
     };
 
@@ -271,6 +263,15 @@ export const PlaylistBuilder: React.FC = () => {
         }
     };
 
+    const handleAddPreviewTrack = (trackId: number) => {
+        const track = allMp3s.find(t => t.id === trackId);
+        if (track && !previewTracks.some(t => t.id === trackId)) {
+            setPreviewTracks(prev => [...prev, track]);
+            setPreviewDuration(prev => prev + (track.duration || 0));
+        }
+        setShowAddTrackModal(false);
+    };
+
     // 5. REPLACE TRACK
     const handleReplaceTrack = async (playlistId: number, oldTrackId: number, newTrackId: number) => {
         try {
@@ -288,6 +289,16 @@ export const PlaylistBuilder: React.FC = () => {
         } catch (err) {
             console.error("Error replacing track", err);
         }
+    };
+
+    const handleReplacePreviewTrack = (oldTrackId: number, newTrackId: number) => {
+        const oldTrack = previewTracks.find(t => t.id === oldTrackId);
+        const newTrack = allMp3s.find(t => t.id === newTrackId);
+        if (oldTrack && newTrack) {
+            setPreviewTracks(prev => prev.map(t => t.id === oldTrackId ? newTrack : t));
+            setPreviewDuration(prev => prev - (oldTrack.duration || 0) + (newTrack.duration || 0));
+        }
+        setReplacingTrackId(null);
     };
 
     // 6. DELETE PLAYLIST
@@ -421,8 +432,9 @@ export const PlaylistBuilder: React.FC = () => {
                 </div>
 
                 {!activePlaylist ? (
-                    // Generator form
-                    <div>
+                    previewTracks.length === 0 ? (
+                        // Generator form
+                        <div>
                         <div style={s.formHeader}>
                             <div>
                                 <h1 style={s.heading}>Génération intelligente</h1>
@@ -583,6 +595,84 @@ export const PlaylistBuilder: React.FC = () => {
                             </div>
                         )}
                     </div>
+                    ) : (
+                        // Workspace for PREVIEW playlist
+                        <div>
+                            <div style={s.activePlaylistHeader}>
+                                <div>
+                                    <h1 style={s.heading}>Prévisualisation : {name}</h1>
+                                    <p style={s.subheading}>
+                                        Non sauvegardée • {previewTracks.length} musiques • {formatDuration(previewDuration)}
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: 10 }}>
+                                    <button onClick={() => setShowAddTrackModal(true)} style={s.btnAccent}>
+                                        Ajouter un morceau
+                                    </button>
+                                    <button onClick={handleSavePlaylist} style={s.btnPrimary}>
+                                        Sauvegarder la Playlist
+                                    </button>
+                                    <button onClick={() => setPreviewTracks([])} style={s.btnSecondary}>
+                                        Annuler
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={s.tracksTable}>
+                                <div style={s.tableHeader}>
+                                    <div style={{ flex: 2 }}>Titre</div>
+                                    <div style={{ flex: 1.5 }}>Artiste</div>
+                                    <div style={{ flex: 1.5 }}>Album</div>
+                                    <div style={{ flex: 1 }}>Genre</div>
+                                    <div style={{ flex: 0.8 }}>Langue</div>
+                                    <div style={{ flex: 0.6 }}>Année</div>
+                                    <div style={{ flex: 0.6 }}>Durée</div>
+                                    <div style={{ width: 100, textAlign: 'right' }}>Actions</div>
+                                </div>
+
+                                {previewTracks.map((file) => {
+                                    const isPlaying = playingMp3Id === file.id;
+
+                                    return (
+                                        <div key={file.id} style={{ ...s.tableRow, ...(isPlaying ? { backgroundColor: 'rgba(255, 255, 255, 0.03)' } : {}) }}>
+                                            <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <button onClick={() => playTrack(file.id)} style={s.playBtnSmall}>
+                                                    {isPlaying ? <FaPause /> : <FaPlay />}
+                                                </button>
+                                                <span style={{ fontWeight: 500, color: isPlaying ? '#e8e6e1' : '#ccc' }}>
+                                                    {file.title || 'Inconnu'}
+                                                </span>
+                                            </div>
+                                            <div style={{ flex: 1.5, color: '#aaa' }}>{file.artist || '—'}</div>
+                                            <div style={{ flex: 1.5, color: '#888' }}>{file.album || '—'}</div>
+                                            <div style={{ flex: 1, color: '#888' }}>{file.genre || '—'}</div>
+                                            <div style={{ flex: 0.8, color: '#888' }}>{file.language || '—'}</div>
+                                            <div style={{ flex: 0.6, color: '#888' }}>{file.year || '—'}</div>
+                                            <div style={{ flex: 0.6, color: '#aaa' }}>{formatDuration(file.duration || 0)}</div>
+
+                                            <div style={{ width: 100, display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                                                <button onClick={() => handleViewLyrics(file)} title="Voir les paroles" style={s.iconActionBtn}>
+                                                    <FaFileAlt />
+                                                </button>
+                                                <button onClick={() => setReplacingTrackId(file.id)} title="Remplacer le morceau" style={s.iconActionBtn}>
+                                                    <FaSyncAlt />
+                                                </button>
+                                                <button onClick={() => handleRemovePreviewTrack(file.id)} title="Supprimer de la prévisualisation" style={s.iconActionBtnDanger}>
+                                                    <FaTrash />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+
+                                {previewTracks.length === 0 && (
+                                    <p style={{ color: '#555', textAlign: 'center', padding: '40px 0' }}>
+                                        Aucun morceau trouvé. Modifiez vos critères et réessayez.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )
                 ) : (
                     // Workspace for active playlist
                     <div>
@@ -594,12 +684,6 @@ export const PlaylistBuilder: React.FC = () => {
                                 </p>
                             </div>
                             <div style={{ display: 'flex', gap: 10 }}>
-                                <button
-                                    onClick={() => setShowAddTrackModal(true)}
-                                    style={s.btnAccent}
-                                >
-                                    Ajouter un morceau
-                                </button>
                                 <a
                                     href={`${API_URL}/${activePlaylist.id}/download-zip`}
                                     style={s.btnPrimaryLink}
@@ -661,20 +745,6 @@ export const PlaylistBuilder: React.FC = () => {
                                             >
                                                 <FaFileAlt />
                                             </button>
-                                            <button
-                                                onClick={() => setReplacingTrackId(file.id)}
-                                                title="Remplacer le morceau"
-                                                style={s.iconActionBtn}
-                                            >
-                                                <FaSyncAlt />
-                                            </button>
-                                            <button
-                                                onClick={() => handleRemoveTrack(activePlaylist.id, file.id)}
-                                                title="Supprimer de la playlist"
-                                                style={s.iconActionBtnDanger}
-                                            >
-                                                <FaTrash />
-                                            </button>
                                         </div>
                                     </div>
                                 );
@@ -682,7 +752,7 @@ export const PlaylistBuilder: React.FC = () => {
 
                             {(!activePlaylist.tracks || activePlaylist.tracks.length === 0) && (
                                 <p style={{ color: '#555', textAlign: 'center', padding: '40px 0' }}>
-                                    Aucun morceau dans cette playlist. Cliquez sur "Ajouter un morceau" ci-dessus.
+                                    Aucun morceau dans cette playlist.
                                 </p>
                             )}
                         </div>
@@ -708,11 +778,11 @@ export const PlaylistBuilder: React.FC = () => {
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {allMp3s
-                                .filter(m => !activePlaylist?.tracks?.some(pt => pt.mp3File?.id === m.id))
+                                .filter(m => activePlaylist ? !activePlaylist.tracks?.some(pt => pt.mp3File?.id === m.id) : !previewTracks.some(pt => pt.id === m.id))
                                 .map(m => (
                                     <div
                                         key={m.id}
-                                        onClick={() => activePlaylist && handleReplaceTrack(activePlaylist.id, replacingTrackId, m.id)}
+                                        onClick={() => activePlaylist ? handleReplaceTrack(activePlaylist.id, replacingTrackId, m.id) : handleReplacePreviewTrack(replacingTrackId, m.id)}
                                         style={s.compactSongCard}
                                     >
                                         <span style={{ fontWeight: 500, display: 'block', fontSize: 12 }}>{m.title}</span>
@@ -727,25 +797,9 @@ export const PlaylistBuilder: React.FC = () => {
                         <div style={{ marginBottom: 15 }}>
                             <SummaryRow label="Durée Totale" value={formatDuration(previewDuration)} />
                         </div>
-                        <div style={s.previewListScroll}>
-                            {previewTracks.map((t, idx) => (
-                                <div key={t.id} style={s.previewTrackRow}>
-                                    <span style={{ color: '#555', width: 16 }}>{idx + 1}</span>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <span style={{ display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: 500, fontSize: 12 }}>{t.title}</span>
-                                        <span style={{ display: 'block', fontSize: 10, color: '#666', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{t.artist || 'Inconnu'}</span>
-                                    </div>
-                                    <span style={{ fontSize: 11, color: '#555' }}>{formatDuration(t.duration || 0)}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <button
-                            onClick={handleSavePlaylist}
-                            style={{ ...s.btnPrimary, width: '100%', marginTop: 20 }}
-                        >
-                            Sauvegarder cette Playlist
-                        </button>
+                        <p style={{ fontSize: 11, color: '#555', marginTop: 20 }}>
+                            Modifiez votre playlist dans le panneau central (Ajout, Remplacement, Suppression) avant de la sauvegarder.
+                        </p>
                     </div>
                 ) : (
                     <div>
@@ -779,7 +833,7 @@ export const PlaylistBuilder: React.FC = () => {
             </aside>
 
             {/* Modal: Add Track Manually */}
-            {showAddTrackModal && activePlaylist && (
+            {showAddTrackModal && (
                 <div style={s.modalOverlay}>
                     <div style={s.modalContent}>
                         <div style={s.modalHeader}>
@@ -803,7 +857,7 @@ export const PlaylistBuilder: React.FC = () => {
                         />
                         <div style={s.modalScrollContainer}>
                             {allMp3s
-                                .filter(m => !activePlaylist.tracks?.some(pt => pt.mp3File?.id === m.id))
+                                .filter(m => activePlaylist ? !activePlaylist.tracks?.some(pt => pt.mp3File?.id === m.id) : !previewTracks.some(pt => pt.id === m.id))
                                 .filter(m => {
                                     const term = searchTrackTerm.toLowerCase();
                                     return (
@@ -819,7 +873,7 @@ export const PlaylistBuilder: React.FC = () => {
                                             <span style={{ fontSize: 11, color: '#888' }}>{m.artist} • {m.album || 'Sans album'}</span>
                                         </div>
                                         <button
-                                            onClick={() => handleAddTrack(activePlaylist.id, m.id)}
+                                            onClick={() => activePlaylist ? handleAddTrack(activePlaylist.id, m.id) : handleAddPreviewTrack(m.id)}
                                             style={s.addTrackConfirmBtn}
                                         >
                                             Ajouter

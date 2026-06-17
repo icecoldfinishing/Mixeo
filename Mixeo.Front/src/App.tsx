@@ -2,9 +2,8 @@ import React from 'react';
 import { FiUser } from "react-icons/fi";
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Mp3Crud } from './components/Mp3Crud';
-import { PlaylistBuilder } from './components/Playlistbuilder';
+import { PlaylistBuilder } from './components/PlayListBuilder';
 import { Auth } from './components/Auth';
-import { FaUserCircle } from 'react-icons/fa';
 
 const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => {
   const location = useLocation();

@@ -19,7 +19,7 @@ CREATE TABLE mp3_files (
     artist VARCHAR(255),
     album VARCHAR(255),
     genre VARCHAR(100),
-    language VARCHAR(100), -- Column added
+    language VARCHAR(100), 
 
     year INT,
     duration INT,
