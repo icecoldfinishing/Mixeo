@@ -7,8 +7,10 @@ public class PlaylistCriteriaDto
     public List<string> Genres { get; set; } = new();
     public List<string> Languages { get; set; } = new();
     public List<string> Artists { get; set; } = new();
+    public List<string> Albums { get; set; } = new();
     public List<string> ExcludeArtists { get; set; } = new();
     public List<string> ExcludeGenres { get; set; } = new();
+    public List<string> ExcludeAlbums { get; set; } = new();
 }
 
 public class SavePlaylistDto
