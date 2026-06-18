@@ -50,13 +50,11 @@
 
         </Style>
 
-
         <!-- TEXT -->
         <Style TargetType="TextBlock">
             <Setter Property="Foreground"
                     Value="White"/>
         </Style>
-
 
         <!-- DATAGRID -->
         <Style TargetType="DataGrid">
