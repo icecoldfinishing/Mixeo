@@ -27,8 +27,7 @@ public partial class MainWindow : Window
         timer.Interval = TimeSpan.FromMinutes(1);
         timer.Tick += ScanFolder;
 
-        // Start Program 2 as a background worker
-        StartProgram2();
+        Loaded += (_, _) => StartProgram2();
     }
 
     private void SelectFolder_Click(object sender, RoutedEventArgs e)
@@ -39,26 +38,35 @@ public partial class MainWindow : Window
         {
             selectedFolder = dialog.FolderName;
             FolderText.Text = selectedFolder;
+            FolderText.Foreground = System.Windows.Media.Brushes.White;
 
             ScanNow();
             timer.Start();
         }
     }
 
-    private void ScanFolder(object? sender, EventArgs e)
-    {
-        ScanNow();
-    }
+    private void ScanFolder(object? sender, EventArgs e) => ScanNow();
 
     private void ScanNow()
     {
         if (string.IsNullOrWhiteSpace(selectedFolder))
             return;
 
+        SetStatus("Scan en cours…");
+
         var files = watcher.ScanFolder(selectedFolder);
         Mp3Grid.ItemsSource = files;
 
-        // Run Program 1 in background: publish file paths to RabbitMQ
+        // Mise à jour compteur (présent uniquement dans le nouveau XAML)
+        if (FindName("FileCountText") is System.Windows.Controls.TextBlock counter)
+            counter.Text = files.Count.ToString();
+
+        SetStatus($"Scan terminé — {files.Count} fichier(s) trouvé(s). Dernier scan : {DateTime.Now:HH:mm:ss}");
+
+        // Réinitialiser le panneau détail
+        ClearDetail();
+
+        // Program 1 : publier les chemins vers RabbitMQ
         Task.Run(async () =>
         {
             FileLogger.Log("program1", $"--- Started folder scan: {selectedFolder} ---");
@@ -95,17 +103,11 @@ public partial class MainWindow : Window
 
                 await channel.QueueDeclareAsync(
                     queue: RabbitConfig.QueueFiles,
-                    durable: false,
-                    exclusive: false,
-                    autoDelete: false
-                );
+                    durable: false, exclusive: false, autoDelete: false);
 
                 await channel.QueueDeclareAsync(
                     queue: RabbitConfig.QueueMetadata,
-                    durable: false,
-                    exclusive: false,
-                    autoDelete: false
-                );
+                    durable: false, exclusive: false, autoDelete: false);
 
                 var consumer = new AsyncEventingBasicConsumer(channel);
                 consumer.ReceivedAsync += async (sender, e) =>
@@ -123,18 +125,17 @@ public partial class MainWindow : Window
                             await RabbitPublisher.PublishJsonAsync(RabbitConfig.QueueMetadata, meta);
                             FileLogger.Log("Program2", $"[RABBITMQ] Publish metadata to {RabbitConfig.QueueMetadata} for: {path}");
 
-                            FileLogger.Log("Program2", $"[RABBITMQ] ACK message for: {path}");
                             await channel.BasicAckAsync(e.DeliveryTag, multiple: false);
                         }
                         catch (Exception ex)
                         {
-                            FileLogger.Log("Program2", $"[RABBITMQ] NACK message for {path}: Error processing - {ex.Message}");
+                            FileLogger.Log("Program2", $"[RABBITMQ] NACK for {path}: {ex.Message}");
                             await channel.BasicNackAsync(e.DeliveryTag, multiple: false, requeue: false);
                         }
                     }
                     else
                     {
-                        FileLogger.Log("Program2", $"[RABBITMQ] ACK message (File not found, skipping): {path}");
+                        FileLogger.Log("Program2", $"[RABBITMQ] ACK (file not found, skipping): {path}");
                         await channel.BasicAckAsync(e.DeliveryTag, multiple: false);
                     }
                 };
@@ -142,8 +143,7 @@ public partial class MainWindow : Window
                 await channel.BasicConsumeAsync(
                     queue: RabbitConfig.QueueFiles,
                     autoAck: false,
-                    consumer: consumer
-                );
+                    consumer: consumer);
 
                 FileLogger.Log("program2", "Program 2 worker is listening on queue: " + RabbitConfig.QueueFiles);
             }
@@ -156,26 +156,38 @@ public partial class MainWindow : Window
 
     private void Mp3Grid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (Mp3Grid.SelectedItem == null)
-            return;
+        if (Mp3Grid.SelectedItem == null) { ClearDetail(); return; }
 
         var selected = Mp3Grid.SelectedItem;
-
         var pathProperty = selected.GetType().GetProperty("AbsolutePath");
         if (pathProperty == null) return;
 
         string? path = pathProperty.GetValue(selected)?.ToString();
-
-        if (string.IsNullOrEmpty(path) || !File.Exists(path))
-            return;
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
 
         var meta = metadataService.Extract(path);
 
-        TitleText.Text = meta.Title;
-        AlbumText.Text = meta.Album;
-        ArtistText.Text = meta.Artist;
-        GenreText.Text = meta.Genre;
-        YearText.Text = meta.Year.ToString();
-        DurationText.Text = meta.Duration + " sec";
+        TitleText.Text    = meta.Title;
+        AlbumText.Text    = meta.Album;
+        ArtistText.Text   = meta.Artist;
+        GenreText.Text    = meta.Genre;
+        DurationText.Text = meta.Duration + " s";
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private void SetStatus(string message)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (FindName("StatusText") is System.Windows.Controls.TextBlock status)
+                status.Text = message;
+        });
+    }
+
+    private void ClearDetail()
+    {
+        TitleText.Text = ArtistText.Text = AlbumText.Text =
+        GenreText.Text = DurationText.Text = "—";
     }
 }
