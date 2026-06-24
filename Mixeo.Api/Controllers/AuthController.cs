@@ -63,6 +63,17 @@ public class AuthController : ControllerBase
 
         return Ok(new { id = user.Id, username = user.Username });
     }
+
+    [HttpGet("verify/{id}")]
+    public async Task<IActionResult> Verify(int id)
+    {
+        var exists = await _db.Users.AnyAsync(u => u.Id == id);
+        if (!exists)
+        {
+            return NotFound(new { message = "User not found." });
+        }
+        return Ok(new { valid = true });
+    }
 }
 
 public class AuthDto

@@ -112,42 +112,56 @@ public class PlaylistController : ControllerBase
         // -------------------------------------------------------------
         // PRIORITÉ 4 : CONTRÔLE DE LA DURÉE MAX (TotalDuration) avec marge de ±59 secondes
         // -------------------------------------------------------------
-        var selectedTracks = new List<Mp3File>();
-        int currentDuration = 0;
         int lowerBound = criteria.TotalDuration; // en secondes (ex. 600 pour 10 min)
         int upperBound = criteria.TotalDuration + 59; // marge de 59 s
 
-        // Première passe : sélectionner tant que cela ne dépasse pas la borne supérieure
-        foreach (var track in availableTracks)
+        List<Mp3File> bestTracks = new List<Mp3File>();
+        int bestDuration = 0;
+        bool found = false;
+        var rng2 = new Random();
+
+        // On essaie jusqu'à 100 fois de trouver une combinaison parfaite
+        for (int attempt = 0; attempt < 100; attempt++)
         {
-            int trackDuration = track.Duration ?? 0;
-            if (currentDuration + trackDuration <= upperBound)
+            var tempTracks = new List<Mp3File>();
+            int tempDuration = 0;
+            
+            var shuffled = availableTracks.OrderBy(_ => rng2.Next()).ToList();
+            
+            foreach (var track in shuffled)
             {
-                selectedTracks.Add(track);
-                currentDuration += trackDuration;
-                // Si on a atteint la borne inférieure, on peut s'arrêter tôt
-                if (currentDuration >= lowerBound)
+                int trackDuration = track.Duration ?? 0;
+                
+                // Si l'ajout dépasse la borne supérieure, on ignore cette piste
+                if (tempDuration + trackDuration > upperBound)
+                    continue;
+                    
+                tempTracks.Add(track);
+                tempDuration += trackDuration;
+                
+                // Si on a atteint l'intervalle cible, on arrête
+                if (tempDuration >= lowerBound && tempDuration <= upperBound)
+                {
+                    found = true;
                     break;
+                }
             }
-        }
-
-        // Si après la première passe la durée est inférieure à la borne inférieure,
-        // tenter d'ajouter le plus petit morceau restant qui ne dépasse pas la borne supérieure.
-        if (currentDuration < lowerBound)
-        {
-            var remaining = availableTracks
-                .Where(t => !selectedTracks.Contains(t))
-                .OrderBy(t => t.Duration ?? int.MaxValue)
-                .FirstOrDefault();
-            if (remaining != null && currentDuration + (remaining.Duration ?? 0) <= upperBound)
+            
+            // Mémorise la tentative la plus proche (la plus grande durée <= upperBound)
+            if (tempDuration > bestDuration)
             {
-                selectedTracks.Add(remaining);
-                currentDuration += remaining.Duration ?? 0;
+                bestDuration = tempDuration;
+                bestTracks = new List<Mp3File>(tempTracks);
             }
+            
+            if (found)
+                break;
         }
 
-        // Fallback : si aucune piste n'a pu être sélectionnée (ex. durée demandée trop basse),
-        // on renvoie le premier morceau disponible afin de ne pas renvoyer une liste vide.
+        var selectedTracks = bestTracks;
+        int currentDuration = bestDuration;
+
+        // Fallback : si aucune piste n'a pu être sélectionnée
         if (!selectedTracks.Any() && availableTracks.Any())
         {
             var fallbackTrack = availableTracks.First();

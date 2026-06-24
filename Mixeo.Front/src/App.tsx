@@ -44,6 +44,22 @@ const AppInner: React.FC = () => {
     localStorage.setItem('mixeo_user', JSON.stringify(loggedInUser));
   };
 
+  React.useEffect(() => {
+    const verifyUser = async () => {
+      if (user) {
+        try {
+          const res = await fetch(`http://localhost:5021/api/auth/verify/${user.id}`);
+          if (!res.ok) {
+            handleLogout();
+          }
+        } catch {
+          // ignore network errors for now, user stays logged in if offline
+        }
+      }
+    };
+    verifyUser();
+  }, [user?.id]);
+
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('mixeo_user');
