@@ -61,7 +61,15 @@ CREATE TABLE playlist_rules (
     exclude_genre TEXT
 );
 
+INSERT INTO users (id, username, password_hash, created_at)
+VALUES (
+    1,
+    'rohy',
+    'cm9oeQ==',
+    '2026-06-24 08:07:43.780635'
+);
 
 select*from mp3_files;
 
 select*from playlist_tracks;
+
