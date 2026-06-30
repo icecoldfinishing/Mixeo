@@ -77,7 +77,6 @@ public class FolderWatcherService
             catch (Exception ex)
             {
                 FileLogger.Log("program1", $"[ERROR] Impossible de traiter le fichier {file} : {ex.Message}");
-                // Add it anyway if we can't read metadata, or we can skip. Let's add it.
                 validFiles.Add(new Mp3File
                 {
                     Title = Path.GetFileNameWithoutExtension(file),
