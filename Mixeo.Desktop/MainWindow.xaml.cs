@@ -27,7 +27,11 @@ public partial class MainWindow : Window
         timer.Interval = TimeSpan.FromMinutes(1);
         timer.Tick += ScanFolder;
 
-        Loaded += (_, _) => StartProgram2();
+        Loaded += (_, _) => 
+        {
+            StartProgram2();
+            StartProgram4();
+        };
     }
 
     private void SelectFolder_Click(object sender, RoutedEventArgs e)
@@ -150,6 +154,62 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 FileLogger.Log("program2", $"Program 2 worker failed to start: {ex.Message}");
+            }
+        });
+    }
+
+    private void StartProgram4()
+    {
+        Task.Run(async () =>
+        {
+            FileLogger.Log("program4", "Program 4 worker starting...");
+            try
+            {
+                var factory = RabbitConfig.CreateConnectionFactory();
+                var connection = await factory.CreateConnectionAsync();
+                var channel = await connection.CreateChannelAsync();
+
+                await channel.QueueDeclareAsync(
+                    queue: RabbitConfig.QueueProcessedFiles,
+                    durable: false, exclusive: false, autoDelete: false);
+
+                var consumer = new AsyncEventingBasicConsumer(channel);
+                consumer.ReceivedAsync += async (sender, e) =>
+                {
+                    var path = Encoding.UTF8.GetString(e.Body.ToArray());
+                    FileLogger.Log("Program4", $"[RABBITMQ] Consume from queue {RabbitConfig.QueueProcessedFiles}: {path}");
+
+                    if (File.Exists(path))
+                    {
+                        try
+                        {
+                            File.Delete(path);
+                            FileLogger.Log("Program4", $"🗑 Fichier supprimé après upload API: {path}");
+                            await channel.BasicAckAsync(e.DeliveryTag, multiple: false);
+                        }
+                        catch (Exception ex)
+                        {
+                            FileLogger.Log("Program4", $"[RABBITMQ] NACK (Erreur suppression) for {path}: {ex.Message}");
+                            await channel.BasicNackAsync(e.DeliveryTag, multiple: false, requeue: true);
+                        }
+                    }
+                    else
+                    {
+                        FileLogger.Log("Program4", $"[RABBITMQ] ACK (file not found, already deleted): {path}");
+                        await channel.BasicAckAsync(e.DeliveryTag, multiple: false);
+                    }
+                };
+
+                await channel.BasicConsumeAsync(
+                    queue: RabbitConfig.QueueProcessedFiles,
+                    autoAck: false,
+                    consumer: consumer);
+
+                FileLogger.Log("program4", "Program 4 worker is listening on queue: " + RabbitConfig.QueueProcessedFiles);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Log("program4", $"Program 4 worker failed to start: {ex.Message}");
             }
         });
     }

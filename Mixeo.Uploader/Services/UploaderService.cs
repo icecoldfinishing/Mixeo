@@ -47,6 +47,25 @@ public class UploaderService
                 FileLogger.Log(ProgramName, $"[RABBITMQ] Consume metadata for: {meta.Title} (File: {meta.Path})");
                 Console.WriteLine($"📦 Received: {meta.Title}");
 
+                // Check duration blacklist
+                int maxDuration = int.MaxValue;
+                string durationBlacklistPath = @"d:\L3\GProjet\Mixeo\blacklist\dure.txt";
+                if (File.Exists(durationBlacklistPath))
+                {
+                    if (int.TryParse(File.ReadAllText(durationBlacklistPath).Trim(), out int parsedDuration))
+                    {
+                        maxDuration = parsedDuration;
+                    }
+                }
+
+                if (meta.Duration > maxDuration)
+                {
+                    FileLogger.Log(ProgramName, $"[BLACKLIST] Upload annulé : Durée {meta.Duration}s > {maxDuration}s pour {meta.Title}");
+                    Console.WriteLine($"[BLACKLIST] Ignoré (durée): {meta.Title}");
+                    await channel.BasicAckAsync(e.DeliveryTag, false);
+                    return;
+                }
+
                 bool ok = await UploadToApi(meta);
 
                 if (ok)
@@ -58,19 +77,13 @@ public class UploaderService
                     {
                         if (File.Exists(meta.Path))
                         {
-                            File.Delete(meta.Path);
-                            FileLogger.Log(ProgramName, $"🗑 Deleted original file: {meta.Path}");
-                            Console.WriteLine($"🗑 Deleted file: {meta.Path}");
-                        }
-                        else
-                        {
-                            FileLogger.Log(ProgramName, $"⚠️ File already gone: {meta.Path}");
+                            await RabbitPublisher.PublishMessageAsync(RabbitConfig.QueueProcessedFiles, meta.Path);
+                            FileLogger.Log(ProgramName, $"[RABBITMQ] Envoyé à QueueProcessedFiles pour suppression: {meta.Path}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        FileLogger.Log(ProgramName, $"❌ Delete error for {meta.Path}: {ex.Message}");
-                        Console.WriteLine($"❌ Delete error: {ex.Message}");
+                        FileLogger.Log(ProgramName, $"❌ Erreur envoi suppression pour {meta.Path}: {ex.Message}");
                     }
                 }
                 else

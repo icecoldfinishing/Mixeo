@@ -62,8 +62,7 @@ public class FolderWatcherService
 
                 if (isBlacklisted)
                 {
-                    FileLogger.Log("program1", $"[BLACKLIST] Suppression du fichier : {file} (Artiste/Genre banni: {meta.Artist ?? meta.Genre})");
-                    File.Delete(file);
+                    FileLogger.Log("program1", $"[BLACKLIST] Fichier ignoré : {file} (Artiste/Genre banni: {meta.Artist ?? meta.Genre})");
                 }
                 else
                 {

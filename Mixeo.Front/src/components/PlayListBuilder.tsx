@@ -105,6 +105,7 @@ export const PlaylistBuilder: React.FC = () => {
     const [searchTrackTerm, setSearchTrackTerm] = useState('');
     const [showAddTrackModal, setShowAddTrackModal] = useState(false);
     const [replacingTrackId, setReplacingTrackId] = useState<number | null>(null);
+    const [selectedPlaylists, setSelectedPlaylists] = useState<number[]>([]);
 
     // Audio Player - Full Playlist Player
     const [playerQueue, setPlayerQueue] = useState<Mp3File[]>([]);
@@ -484,6 +485,16 @@ export const PlaylistBuilder: React.FC = () => {
                                 ...(activePlaylist?.id === p.id ? s.playlistCardActive : {})
                             }}
                         >
+                            <input
+                                type="checkbox"
+                                checked={selectedPlaylists.includes(p.id)}
+                                onClick={e => e.stopPropagation()}
+                                onChange={e => {
+                                    if (e.target.checked) setSelectedPlaylists(prev => [...prev, p.id]);
+                                    else setSelectedPlaylists(prev => prev.filter(id => id !== p.id));
+                                }}
+                                style={{ marginRight: 8 }}
+                            />
                             <div style={s.playlistInfo}>
                                 <span style={s.playlistName}>{p.name}</span>
                                 <span style={s.playlistMeta}>
@@ -503,6 +514,36 @@ export const PlaylistBuilder: React.FC = () => {
                     ))}
                     {savedPlaylists.length === 0 && (
                         <p style={{ color: '#555', fontSize: 12, padding: '10px 14px' }}>Aucune playlist sauvegardée.</p>
+                    )}
+                    {selectedPlaylists.length >= 2 && (
+                        <button
+                            style={{ ...s.btnPrimary, margin: '10px 14px', width: 'calc(100% - 28px)' }}
+                            onClick={() => {
+                                const mergedName = window.prompt("Nom de la playlist fusionnée :", "Fusion de playlists");
+                                if (mergedName === null) return; // Annulé par l'utilisateur
+
+                                const tracksToMerge = savedPlaylists
+                                    .filter(p => selectedPlaylists.includes(p.id))
+                                    .flatMap(p => p.tracks?.map(t => t.mp3File) || [])
+                                    .filter((t): t is Mp3File => t !== null && t !== undefined);
+                                
+                                const uniqueTracksMap = new Map<number, Mp3File>();
+                                tracksToMerge.forEach(t => {
+                                    if (t.id) uniqueTracksMap.set(t.id, t);
+                                });
+                                
+                                const uniqueTracks = Array.from(uniqueTracksMap.values());
+                                
+                                setActivePlaylist(null);
+                                setPreviewTracks(uniqueTracks);
+                                setPreviewDuration(uniqueTracks.reduce((acc, t) => acc + (t.duration || 0), 0));
+                                setName(mergedName);
+                                setSelectedPlaylists([]);
+                                setStatus({ type: 'ok', msg: 'Playlists fusionnées en prévisualisation. Vérifiez et sauvegardez.' });
+                            }}
+                        >
+                            Fusionner ({selectedPlaylists.length})
+                        </button>
                     )}
                 </div>
             </div>

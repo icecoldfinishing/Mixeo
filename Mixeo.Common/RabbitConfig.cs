@@ -11,6 +11,7 @@ public static class RabbitConfig
 
     public const string QueueFiles = "mp3.files";
     public const string QueueMetadata = "mp3.metadata";
+    public const string QueueProcessedFiles = "mp3.processed";
 
     public static ConnectionFactory CreateConnectionFactory()
     {
